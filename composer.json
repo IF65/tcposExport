@@ -1,0 +1,13 @@
+{
+    "name": "if65/tcpos-export",
+    "description": "Esportazione dati TcPos in vari formati",
+    "require": {
+        "guzzlehttp/guzzle": "^7.3"
+    },
+    "authors": [
+        {
+            "name": "Marco Gnecchi",
+            "email": "marco.gnecchi@if65.it"
+        }
+    ]
+}
