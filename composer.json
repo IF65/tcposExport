@@ -2,7 +2,8 @@
     "name": "if65/tcpos-export",
     "description": "Esportazione dati TcPos in vari formati",
     "require": {
-        "guzzlehttp/guzzle": "^7.3"
+        "guzzlehttp/guzzle": "^7.3",
+        "ulrichsg/getopt-php": "^3.4"
     },
     "authors": [
         {
@@ -11,3 +12,5 @@
         }
     ]
 }
+
+
