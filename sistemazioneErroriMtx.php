@@ -1,7 +1,7 @@
 <?php
 
 $errorFileName = '/Users/if65/Desktop/errori_globali.txt';
-$datacollectPath = '/Users/if65/Desktop/DC/';
+$datacollectPath = '/dati/datacollect/';
 
 $errorFile = file_get_contents($errorFileName);
 
@@ -16,22 +16,24 @@ $errors = array_keys($uniqueMatches);
 
 foreach ($errors as $error) {
 	$datacollectFileName = '';
+	$datacollectFolderName = '';
 	$reg = '';
 	$trans = '';
 	if (preg_match('/(\d{4})(\d{3})(\d{6})(\d{4})/', $error, $matches)) {
-		$datacollectFileName = $matches[1] . '_20' . $matches[3] . '_' . $matches[3] . '_DC.TXT';
+		$datacollectFileName = $matches[1] . '_20' . $matches[3] . '_' . $matches[3] . '_DC';
 		$reg = $matches[2];
 		$trans = $matches[4];
-		//0104:051:210527:182909:6621:
+		$datacollectFolderName .= '20' . $matches[3];
 	} elseif (preg_match('/(\d{4}):(\d{3}):(2\d{5}):\d{6}:(\d{4})/', $error, $matches)) {
-		$datacollectFileName = $matches[1] . '_20' . $matches[3] . '_' . $matches[3] . '_DC.TXT';
+		$datacollectFileName = $matches[1] . '_20' . $matches[3] . '_' . $matches[3] . '_DC';
 		$reg = $matches[2];
 		$trans = $matches[4];
+		$datacollectFolderName .= '20' . $matches[3];
 	}
 
 	if($datacollectFileName != '') {
-		if (file_exists($datacollectPath . $datacollectFileName)) {
-			$datacollect = file_get_contents($datacollectPath . $datacollectFileName);
+		if (file_exists($datacollectPath . $datacollectFolderName . '/' . $datacollectFileName . '.ERR')) {
+			$datacollect = file_get_contents($datacollectPath . $datacollectFolderName . '/' . $datacollectFileName . '.ERR');
 
 			$dc = explode("\r\n", $datacollect);
 
@@ -134,7 +136,7 @@ foreach ($errors as $error) {
 			$oldRows = array_values(array_splice($dc, $firstSale, $lastSale - $firstSale - 2, $newRows));
 
 			$text = implode("\r\n", $dc);
-			file_put_contents('/Users/if65/Desktop/periodi/corrente/ncr/' . $datacollectFileName, $text);
+			file_put_contents($datacollectPath . $datacollectFolderName . '/' . $datacollectFileName . '.TXT', $text);
 		}
 	}
 }
