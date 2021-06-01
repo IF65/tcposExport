@@ -1,12 +1,15 @@
 <?php
 
-$errorFileName = '/preparazione/errori_globali.txt';
-$datacollectPath = '/dati/datacollect/';
+/*$errorFileName = '/preparazione/errori_globali.txt';
+$datacollectPath = '/dati/datacollect/';*/
 
-$errorFile = file_get_contents($errorFileName);
-if (file_exists($errorFile)) {
+$errorFileName = '/Users/if65/Desktop/errori_globali.txt';
+$datacollectPath = '/Users/if65/Desktop/';
 
-	$errorCode = preg_match_all('/(\d{17}|(\d{4}):(\d{3}):(2\d{5}):\d{6}:(\d{4}))/', $errorFile, $matches);
+if (file_exists($errorFileName)) {
+	$errorFile = file_get_contents($errorFileName);
+
+	$errorCode = preg_match_all('/(?:(\d{17})|(\d{4}:\d{3}:2\d{5}:\d{6}:\d{4}))/', $errorFile, $matches);
 
 	$uniqueMatches = [];
 	foreach ($matches[0] as $match) {
