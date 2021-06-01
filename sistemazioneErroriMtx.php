@@ -36,8 +36,8 @@ if (file_exists($errorFileName)) {
 		}
 
 		if ($datacollectFileName != '') {
-			if (file_exists($datacollectPath . $datacollectFolderName . '/' . $datacollectFileName . '.ERR')) {
-				$datacollect = file_get_contents($datacollectPath . $datacollectFolderName . '/' . $datacollectFileName . '.ERR');
+			if (file_exists($datacollectPath . $datacollectFolderName . '/' . $datacollectFileName . '.TXT')) {
+				$datacollect = file_get_contents($datacollectPath . $datacollectFolderName . '/' . $datacollectFileName . '.TXT');
 
 				$dc = explode("\r\n", $datacollect);
 
