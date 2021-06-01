@@ -3,7 +3,7 @@
 $errorFileName = '/preparazione/errori_globali.txt';
 $datacollectPath = '/dati/datacollect/';
 
-//$errorFileName = '/Users/if65/Desktop/errori_globali.txt';
+// $errorFileName = '/Users/if65/Desktop/errori_globali.txt';
 //$datacollectPath = '/Users/if65/Desktop/';
 
 if (file_exists($errorFileName)) {
@@ -136,10 +136,19 @@ if (file_exists($errorFileName)) {
 				 * sono gli sconti transazionali che in caso di quantità diversa da 1 rendono il totale venduto per barcode
 				 * non divisibile senza resto. in questo caso agggiungo o tolgo la differenza su un'altra vendita con quantità 1.
 				 */
+				if ($totaleScontrino != 0) {
+					$oldRows = array_values(array_splice($dc, $firstSale, $lastSale - $firstSale - 2, $newRows));
+					$text = implode("\r\n", $dc);
+				} else {
+					$newDC = [];
+					for ($i = 0; $i < count($dc); $i++) {
+						if (! preg_match('/' . $pattern . '/', $dc[$i])) {
+							$newDC[] = $dc[$i];
+						}
+					}
+					$text = implode("\r\n", $newDC);
+				}
 
-				$oldRows = array_values(array_splice($dc, $firstSale, $lastSale - $firstSale - 2, $newRows));
-
-				$text = implode("\r\n", $dc);
 				file_put_contents($datacollectPath . $datacollectFolderName . '/' . $datacollectFileName . '.TXT', $text);
 			}
 		}
