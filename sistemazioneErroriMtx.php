@@ -1,10 +1,10 @@
 <?php
 
-/*$errorFileName = '/preparazione/errori_globali.txt';
-$datacollectPath = '/dati/datacollect/';*/
+$errorFileName = '/preparazione/errori_globali.txt';
+$datacollectPath = '/dati/datacollect/';
 
-$errorFileName = '/Users/if65/Desktop/errori_globali.txt';
-$datacollectPath = '/Users/if65/Desktop/';
+//$errorFileName = '/Users/if65/Desktop/errori_globali.txt';
+//$datacollectPath = '/Users/if65/Desktop/';
 
 if (file_exists($errorFileName)) {
 	$errorFile = file_get_contents($errorFileName);
