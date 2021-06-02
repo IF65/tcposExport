@@ -1,10 +1,13 @@
 <?php
 
-$errorFileName = '/preparazione/errori_globali.txt';
-$datacollectPath = '/dati/datacollect/';
-
-// $errorFileName = '/Users/if65/Desktop/errori_globali.txt';
-//$datacollectPath = '/Users/if65/Desktop/';
+$debug = false;
+if ($debug) {
+	$errorFileName = '/Users/if65/Desktop/errori_globali.txt';
+	$datacollectPath = '/Users/if65/Desktop/';
+} else {
+	$errorFileName = '/preparazione/errori_globali.txt';
+	$datacollectPath = '/dati/datacollect/';
+}
 
 if (file_exists($errorFileName)) {
 	$errorFile = file_get_contents($errorFileName);
@@ -23,7 +26,7 @@ if (file_exists($errorFileName)) {
 		$datacollectFolderName = '';
 		$reg = '';
 		$trans = '';
-		if (preg_match('/(\d{4})(\d{3})(\d{6})(\d{4})/', $error, $matches)) {
+		if (preg_match('/(\d{4})(\d{3})(2\d{5})(\d{4})/', $error, $matches)) {
 			$datacollectFileName = $matches[1] . '_20' . $matches[3] . '_' . $matches[3] . '_DC';
 			$reg = $matches[2];
 			$trans = $matches[4];
