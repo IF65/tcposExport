@@ -82,12 +82,6 @@ if (file_exists($errorFileName)) {
 				$lastSale = 0;
 				$patternH = '^.{5}' . $reg . '.{15}' . $trans . '.*:S:1';
 				$patternT = '^.{5}' . $reg . '.{15}' . $trans . '.*:T:1';
-				$patternG = '^.{5}' . $reg . '.{15}' . $trans . '.*:G:1(?:1|3)';
-				for ($i = 0; $i < count($dc); $i++) {
-					if (preg_match('/' . $patternG . '/', $dc[$i])) {
-						$dc[$i] = '';
-					}
-				}
 
 				for ($i = 0; $i < count($dc); $i++) {
 					if (preg_match('/' . $patternH . '/', $dc[$i]) & !$firstSale) {
@@ -176,11 +170,12 @@ if (file_exists($errorFileName)) {
 					}
 
 					/**
-					 * elimino le righe vuote
+					 * elimino le righe G di tipo 1 e 3 che vengono messe dopo i record T
 					 */
 					$newDC = [];
+					$patternG = '^.{5}' . $reg . '.{15}' . $trans . '.*:G:1(?:1|3)';
 					for ($i = 0; $i < count($dc); $i++) {
-						if ($dc[$i] != '') {
+						if (! preg_match('/' . $patternG . '/', $dc[$i])) {
 							$newDC[] = $dc[$i];
 						}
 					}
