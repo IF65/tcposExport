@@ -12,10 +12,10 @@ if ($debug) {
 if (file_exists($errorFileName)) {
 	$errorFile = file_get_contents($errorFileName);
 
-	$errorCode = preg_match_all('/(?:(\d{17})|\d{4}:\d{4}:20\d{6}.{8}\d{4}\s)/', $errorFile, $rows);
+	$errorCode = preg_match_all('/(?:(\d{17})|(\d{4}:\d{4}:20\d{6}.{8}\d{4}\s))/', $errorFile, $rows);
 
 	$transactions = [];
-	foreach ($rows[0] as $row) {
+	foreach ($rows[1] as $row) {
 		$store = '';
 		$ddate = '';
 		$reg = '';
@@ -25,12 +25,26 @@ if (file_exists($errorFileName)) {
 			$ddate = $matches[3];
 			$reg = $matches[2];
 			$trans = $matches[4];
-		} elseif (preg_match('/(\d{4}):(\d{3}):(2\d{5}):\d{6}:(\d{4}):...:[^F]/', $row, $matches)) {
-			$store = $matches[1];
-			$ddate = $matches[3];
-			$reg = $matches[2];
-			$trans = $matches[4];
-		} elseif (preg_match('/\d(\d{3}):(\d{4}):20(\d{6}).{8}(\d{4})\s/', $row, $matches)) {
+		}
+
+		// sistemazione store
+		if (preg_match('/^06(\d\d)$/', $store, $matches)) {
+			$store = '36' . $matches[1];
+		} elseif (preg_match('/01((?:51|52))$/', $store, $matches)) {
+			$store = '31' . $matches[1];
+		}
+
+		if (preg_match('/^(?:01|02|04|05|31|36)/', $store)) {
+			$transactions[] = ['store' => $store, 'ddate' => $ddate, 'reg' => $reg, 'trans' => $trans];
+		}
+	}
+
+	foreach ($rows[2] as $row) {
+		$store = '';
+		$ddate = '';
+		$reg = '';
+		$trans = '';
+		if (preg_match('/\d(\d{3}):(\d{4}):20(\d{6}).{8}(\d{4})\s/', $row, $matches)) {
 			$store = $matches[4];
 			$ddate = $matches[3];
 			$reg = $matches[1];
