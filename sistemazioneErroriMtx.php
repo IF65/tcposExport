@@ -68,6 +68,13 @@ if (file_exists($errorFileName)) {
 				$lastSale = 0;
 				$patternH = '^.{5}' . $reg . '.{15}' . $trans . '.*:S:1';
 				$patternT = '^.{5}' . $reg . '.{15}' . $trans . '.*:T:1';
+				$patternG = '^.{5}' . $reg . '.{15}' . $trans . '.*:G:1(?:1|3)';
+				for ($i = 0; $i < count($dc); $i++) {
+					if (preg_match('/' . $patternG . '/', $dc[$i])) {
+						$dc[$i] = '';
+					}
+				}
+
 				for ($i = 0; $i < count($dc); $i++) {
 					if (preg_match('/' . $patternH . '/', $dc[$i]) & !$firstSale) {
 						$firstSale = $i;
@@ -153,6 +160,18 @@ if (file_exists($errorFileName)) {
 							print_r($id);
 						}
 					}
+
+					/**
+					 * elimino le righe vuote
+					 */
+					$newDC = [];
+					for ($i = 0; $i < count($dc); $i++) {
+						if ($dc[$i] != '') {
+							$newDC[] = $dc[$i];
+						}
+					}
+					unset($dc);
+					$dc = $newDC;
 
 					/**
 					 * controllo che il totale dello scontrino coincida con il totale delle vendite. a volte è diverso perché ci
