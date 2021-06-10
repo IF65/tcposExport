@@ -77,7 +77,8 @@ $transcodificaSede = [
 	'0500' => '0501',
 	'6001' => '0201',
 	'6002' => '0155',
-	'6003' => '0142'
+	'6003' => '0142',
+	'6004' => '0203'
 ];
 
 $menuValidi = ['3', '4', '5', '8', '11', '12', '13', '14', '15'];
@@ -328,6 +329,8 @@ while ($data <= $dataFine) {
 				}
 			}
 
+			$totaleScontiTransazionali = 0;
+
 			//promozioni
 			//0694:001:210410:095213:8777:033:D:197:0000: 0:0:           :00+00000-000000200
 			//0694:001:210410:095213:8777:034:w:100:0000:   9882179302007+00010000-000000200
@@ -352,6 +355,7 @@ while ($data <= $dataFine) {
 						'9882179302007', // da cambiare
 						round($promotion['amount'] * 100, 0)
 					);
+					$totaleScontiTransazionali += abs($promotion['amount']);
 				}
 			}
 
@@ -380,6 +384,7 @@ while ($data <= $dataFine) {
 							'9882179302007', // da cambiare
 							round($discount['amount'] * 100, 0)
 						);
+						$totaleScontiTransazionali += abs($discount['amount']);
 					}
 				}
 			}
@@ -410,6 +415,7 @@ while ($data <= $dataFine) {
 							99,
 							''
 						);
+						$totaleScontiTransazionali += abs($discount['amount']);
 					}
 				}
 			}
@@ -459,8 +465,32 @@ while ($data <= $dataFine) {
 				);
 			}
 
+			if ($totaleScontiTransazionali) {
+				$totaleDaVendite = 0;
+				$maxIndex = 0;
+				$maxValue = 0;
+				foreach ($sales as $index => $sale) {
+					$price = abs(round($sale['prezzoListino'] - $sale['sconto'], 2));
+					if ($maxValue < $price) {
+						$maxValue = $price;
+						$maxIndex = $index;
+					}
+					$totaleDaVendite += $price;
+				}
+				foreach ($sales as $index => $sale) {
+					$price = abs(round($sale['prezzoListino'] - $sale['sconto'], 2));
+					$sconto_transazionale = $price/$totaleDaVendite*$totaleScontiTransazionali;
+					$totaleScontiTransazionali -= round($sconto_transazionale,2);
+					$sales[$index]['scontoTransazionale'] = round($sconto_transazionale,2);
+				}
+				$sales[$maxIndex]['scontoTransazionale'] = $sales[$maxIndex]['scontoTransazionale'] + $totaleScontiTransazionali;
+			}
 			foreach ($sales as $sale) {
-				$price = round(($sale['prezzoListino'] - $sale['sconto']) * 100, 0);
+				$scontoTransazionale = 0;
+				if (key_exists('scontoTransazionale', $sale)) {
+					$scontoTransazionale = $sale['scontoTransazionale'];
+				}
+				$price = round(($sale['prezzoListino'] - $sale['sconto'] - $scontoTransazionale) * 100, 0);
 				$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:100:%04s:%\' 16s%+05d%07d%07d',
 					$sede,
 					$transaction['till_code'],
@@ -539,7 +569,7 @@ while ($data <= $dataFine) {
 		// esportazione su file di testo
 		$fileName = $sede . "_20$anno$mese$giorno" . '_' . "$anno$mese$giorno" . '_DC.TXT';
 
-		$path = '/Users/if65/Desktop/DCEpipoli/';
+		$path = '/Users/if65/Desktop/DC/';
 		if (! $debug) {
 			$path = "/dati/datacollect/20$anno$mese$giorno/";
 		}
