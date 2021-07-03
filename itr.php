@@ -12,8 +12,8 @@ use GetOpt\Option;
 $timeZone = new DateTimeZone('Europe/Rome');
 $currentDate = (new DateTime('now', $timeZone));
 
-//$path = '/Users/if65/Desktop/';
-$path = 'C:\FILES_ITR\\';
+$path = '/Users/if65/Desktop/';
+//$path = 'C:\FILES_ITR\\';
 
 /**
  * Creo il client per leggere gli incassi dal servizio sulla VM delle quadrature
@@ -62,7 +62,9 @@ try {
        				store, 
        				ddate, 
        				case when totalamount <> 0 then totalamount else salesamount end totalamount, 
-       				customercount 
+       				customercount,
+	       			totalhours,
+	       			closed
 				from mtx.control 
 				where ddate >= date_sub(current_date(), interval 2 week) and ddate < current_date() 
 				order by ddate, store";
@@ -73,7 +75,14 @@ try {
 
 		$text = '';
 		foreach($rows as $row) {
-			$text .= sprintf("%sT00:00:00%04s%012.2f%06d\n", $row['ddate'], $row['store'], (float)$row['totalamount'], (int)$row['customercount']);
+			$text .= sprintf("%sT00:00:00%04s%012.2f%06d%06.1f%01d\n",
+				$row['ddate'],
+				$row['store'],
+				(float)$row['totalamount'],
+				(int)$row['customercount'],
+				(float)$row['totalhours'],
+				(int)$row['closed']
+			);
 		}
 
 		$fileName =  'quad_' . (new DateTime('now', $timeZone))->getTimestamp();
