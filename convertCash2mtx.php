@@ -44,11 +44,10 @@ $data = new DateTime($options->getOption('i'), $timeZone);
 $sede = $options->getOption('s');
 
 /**
- * costanti
+ * costanti: ho aggiunto 0000 perché in alcuni casi esce in questo modo dai cash
  */
-$codiciIva = ['9931' => 0, 	'0400' => 1, '1000' => 2, '2200' => 3, '0500' => 4, '9100' => 5, '9300' => 6, '7400' => 7];
+$codiciIva = ['0000' => 7, '9931' => 0, 	'0400' => 1, '1000' => 2, '2200' => 3, '0500' => 4, '9100' => 5, '9300' => 6, '7400' => 7];
 $aliquoteIva = [0 => 0, 1 => 4, 2 => 10, 3 => 22, 4 => 5, 5 => 0, 6 => 0, 7 => 0];
-
 $ip = ['0012' => '192.168.239.20', '0016' => '192.168.216.10', '0018' => '192.168.218.10'];
 
 if (preg_match('/^001(?:2|6|8)/', $sede)) {
