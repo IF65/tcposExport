@@ -201,6 +201,8 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 			$aliquotaIva = $aliquoteIva[$tipoIva];
 			$numeroColli = (int)$matches[12];
 
+			$storno = (bool)($matches[7] == '1');
+
 			$peso = 1;
 			$pezziPerCartone = ((int)$matches[5] != 0) ? (int)$matches[5] : 1;
 			$quantita = (($matches[4] / 100) * $pezziPerCartone != 0) ? ($matches[4] / 100) * $pezziPerCartone : 1;
@@ -239,7 +241,8 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 				'aliquotaIva' => $aliquotaIva,
 				'imponibile' => $imponibile,
 				'imposta' => $imposta,
-				'importo' => $importo
+				'importo' => $importo,
+				'storno' => $storno
 			];
 
 			$elencoCodiciArticoloUtilizzati[] = $codiceArticolo;
@@ -251,7 +254,6 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 	 */
 	$righe = [];
 	foreach ($dc as $numero => $transazione) {
-
 		$numRec = 0;
 
 		$sede = $transazione['sede'];
@@ -284,32 +286,62 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 		 * vendite
 		 */
 		foreach ($transazione['vendite'] as $vendita) {
-			if ($vendita['articoloAPeso']) {
-				$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+09.3f%+10d',
-					$sede,
-					"$anno$mese$giorno",
-					$ora,
-					substr($numero, -4),
-					getCounter($numRec),
-					($transazione['importo'] < 0) ? 5 : 0,
-					$vendita['reparto'],
-					$vendita['barcode'],
-					($transazione['importo'] < 0) ? $vendita['peso'] * -1 : $vendita['peso'],
-					abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
-				);
+			if ($vendita['storno']) {
+				if ($vendita['articoloAPeso']) {
+					$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+09.3f%+010d',
+						$sede,
+						"$anno$mese$giorno",
+						$ora,
+						substr($numero, -4),
+						getCounter($numRec),
+						7,
+						$vendita['reparto'],
+						$vendita['barcode'],
+						abs($vendita['peso'] * -1),
+						abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0)) * -1
+					);
+				} else {
+					$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
+						$sede,
+						"$anno$mese$giorno",
+						$ora,
+						substr($numero, -4),
+						getCounter($numRec),
+						7,
+						$vendita['reparto'],
+						$vendita['barcode'],
+						abs($vendita['quantita']) * -1 ,
+						abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
+					);
+				}
 			} else {
-				$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
-					$sede,
-					"$anno$mese$giorno",
-					$ora,
-					substr($numero, -4),
-					getCounter($numRec),
-					($transazione['importo'] < 0) ? 5 : 0,
-					$vendita['reparto'],
-					$vendita['barcode'],
-					($transazione['importo'] < 0) ? $vendita['quantita'] * -1 : $vendita['quantita'],
-					abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
-				);
+				if ($vendita['articoloAPeso']) {
+					$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+09.3f%+010d',
+						$sede,
+						"$anno$mese$giorno",
+						$ora,
+						substr($numero, -4),
+						getCounter($numRec),
+						($transazione['importo'] < 0) ? 5 : 0,
+						$vendita['reparto'],
+						$vendita['barcode'],
+						($transazione['importo'] < 0) ? $vendita['peso'] * -1 : $vendita['peso'],
+						abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
+					);
+				} else {
+					$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
+						$sede,
+						"$anno$mese$giorno",
+						$ora,
+						substr($numero, -4),
+						getCounter($numRec),
+						($transazione['importo'] < 0) ? 5 : 0,
+						$vendita['reparto'],
+						$vendita['barcode'],
+						($transazione['importo'] < 0) ? $vendita['quantita'] * -1 : $vendita['quantita'],
+						abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
+					);
+				}
 			}
 			$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:i:100:%04s:%\' 16s:%011d3000000',
 				$sede,
