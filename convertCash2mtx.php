@@ -98,9 +98,10 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 		]);
 
 		/**
-		 * carico il file scaricato via ftp
+		 * carico il file scaricato via ftp e poi lo elimino
 		 */
 		$text = file_get_contents($localPath . $fileName . '.DAT');
+		unlink($localPath . $fileName . '.DAT');
 		$rows = explode("\r\n", $text);
 
 		/**
