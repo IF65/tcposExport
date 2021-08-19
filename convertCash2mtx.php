@@ -473,7 +473,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 				'001',
 				'',
 				($transazione['tipo'] == 'A') ? count($transazione['vendite']) * -1 : count($transazione['vendite']),
-				round($transazione['importo'] * 100, 0)
+				($transazione['tipo'] == 'A') ? round($transazione['importo'] * 100, 0) * -1 : round($transazione['importo'] * 100, 0)
 			);
 		}
 
