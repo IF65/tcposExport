@@ -219,7 +219,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 
 					$peso = 1;
 					$pezziPerCartone = ((int)$matches[5] != 0) ? (int)$matches[5] : 1;
-					$quantita = (($matches[4] / 100) * $pezziPerCartone != 0) ? ($matches[4] / 100) * $pezziPerCartone : 1;
+					$quantita = (($matches[4] / 100) != 0) ? ($matches[4] / 100) * $pezziPerCartone : 1;
 					$articoloAPeso = false;
 					if ($quantita - floor($quantita) != 0) {
 						$peso = $quantita;
@@ -233,7 +233,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 
 					$reparto = (key_exists($codiceArticolo, $elencoReparti)) ? $elencoReparti[$codiceArticolo] : '0100';
 					$barcode = (key_exists($codiceArticolo, $elencoBarcode)) ? $elencoBarcode[$codiceArticolo] : '';
-					if ($articoloAPeso && strlen($barcode == 7)) {
+					if ($articoloAPeso && strlen($barcode) == 7) {
 						$barcode12 = str_pad($barcode, 12, '0', STR_PAD_RIGHT);
 						$barcode = $barcode12 . get_ean_checkdigit($barcode12);
 					}
@@ -402,7 +402,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 				 * iva dettagliata vendite
 				 */
 				foreach ($transazione['vendite'] as $vendita) {
-					$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:100:%04s:%\' 16s%+05d%07d%07d',
+					$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:100:%04s:%\' 16s%+05d%07s%07s',
 						$sede,
 						'001',
 						"$anno$mese$giorno",

@@ -143,13 +143,17 @@ while ($data <= $dataFine) {
 			$importo = (float)$vendita['importo'];
 
 			$peso = 1;
+			$quantita = (float)$vendita['quantita'];
 			$pezziPerCartone = (int)$vendita['pezziPerCartone'];
-			$quantita = (float)$vendita['quantita'] * ($pezziPerCartone != 0) ? $pezziPerCartone : 1;
 			$articoloAPeso = false;
 			if ($quantita - floor($quantita) != 0) {
 				$peso = $quantita;
 				$quantita = 1;
 				$articoloAPeso = true;
+			}
+
+			if (! $articoloAPeso) {
+				$quantita = (float)$vendita['quantita'] * (($pezziPerCartone != 0) ? $pezziPerCartone : 1);
 			}
 
 			$dc[$vendita['numero']]['righe'][] = [
@@ -292,7 +296,7 @@ while ($data <= $dataFine) {
 			foreach ($vendite as $vendita) {
 
 				if ($vendita['articoloAPeso']) {
-					$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+09.3f+%09d',
+					$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+09.3f%+010d',
 						$sede,
 						"$anno$mese$giorno",
 						$ora,
@@ -302,7 +306,7 @@ while ($data <= $dataFine) {
 						$vendita['reparto'],
 						$vendita['barcode'],
 						($transazione['importo'] < 0) ? $vendita['peso'] * -1 : $vendita['peso'],
-						abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0)) * -1
+						abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0)) * (($transazione['importo'] < 0) ? -1 : 1)
 					);
 				} else {
 					$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
@@ -360,7 +364,9 @@ while ($data <= $dataFine) {
 			);
 
 			foreach ($vendite as $vendita) {
-				$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:100:%04s:%\' 16s%+05d%07d%07d',
+				$test1 = abs($vendita['importo'] * 100);
+				$test2 = abs($vendita['imposta'] * 100);
+				$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:100:%04s:%\' 16s%+05d%07s%07s',
 					$sede,
 					'001',
 					"$anno$mese$giorno",
