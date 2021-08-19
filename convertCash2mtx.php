@@ -334,7 +334,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 							($transazione['tipo'] == 'A') ? 5 : 0,
 							$vendita['reparto'],
 							$vendita['barcode'],
-							($transazione['importo'] < 0) ? $vendita['peso'] * -1 : $vendita['peso'],
+							($transazione['tipo'] == 'A') ? $vendita['peso'] * -1 : $vendita['peso'],
 							abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
 						);
 					} else {
@@ -347,7 +347,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 							($transazione['tipo'] == 'A') ? 5 : 0,
 							$vendita['reparto'],
 							$vendita['barcode'],
-							($transazione['importo'] < 0) ? $vendita['quantita'] * -1 : $vendita['quantita'],
+							($transazione['tipo'] == 'A') ? $vendita['quantita'] * -1 : $vendita['quantita'],
 							abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
 						);
 					}
@@ -406,7 +406,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 					getCounter($numRec),
 					'001',
 					$vendita['barcode'],
-					($transazione['importo'] < 0) ? 1 : ($vendita['importo'] > 0) ? 1 : -1,
+					($transazione['tipo'] == 'A') ? 1 : ($vendita['importo'] > 0) ? 1 : -1,
 					abs($vendita['importo'] * 100),
 					abs($vendita['imposta'] * 100),
 				);
@@ -472,7 +472,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 				($transazione['tipo'] == 'A') ? 5 : 0,
 				'001',
 				'',
-				($transazione['importo'] < 0) ? count($transazione['vendite']) * -1 : count($transazione['vendite']),
+				($transazione['tipo'] == 'A') ? count($transazione['vendite']) * -1 : count($transazione['vendite']),
 				round($transazione['importo'] * 100, 0)
 			);
 		}
