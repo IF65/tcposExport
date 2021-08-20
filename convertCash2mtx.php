@@ -311,7 +311,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 								7,
 								$vendita['reparto'],
 								$vendita['barcode'],
-								abs($vendita['peso'] * -1),
+								abs($vendita['peso'] ) * -1,
 								abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0)) * -1
 							);
 						} else {
@@ -395,13 +395,17 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 					'',
 					'01',
 					1,
-					round($transazione['importo'] * 100, 0)
+					($transazione['tipo'] == 'A') ? abs(round($transazione['importo'] * 100, 0)) * -1 : abs(round($transazione['importo'] * 100, 0))
 				);
 
 				/**
 				 * iva dettagliata vendite
 				 */
 				foreach ($transazione['vendite'] as $vendita) {
+					$segno = 1;
+					if ($vendita['storno']) {
+						$segno = -1;
+					}
 					$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:100:%04s:%\' 16s%+05d%07s%07s',
 						$sede,
 						'001',
@@ -411,7 +415,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 						getCounter($numRec),
 						'001',
 						$vendita['barcode'],
-						($transazione['tipo'] == 'A') ? 1 : ($vendita['importo'] > 0) ? 1 : -1,
+						$segno,
 						abs($vendita['importo'] * 100),
 						abs($vendita['imposta'] * 100),
 					);
@@ -432,7 +436,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 				/**
 				 * castelletto iva transazione
 				 */
-				ksort($transazione['dettaglioImposta'], SORT_NUMERIC);
+				uksort($transazione['dettaglioImposta'], "cmpAliquoteIva");
 				foreach ($transazione['dettaglioImposta'] as $codice => $rigaDettaglio) {
 					$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:V:1%1d1:%04s:%\' 11s%04.1f%%:00%+06d%+010d',
 						$sede,
@@ -542,3 +546,20 @@ function getCounter(int &$numRec): int {
 	}
 	return $numRec;
 };
+
+function cmpAliquoteIva($a, $b)
+{
+	$codiciIva = ['0000' => 7, '9931' => 0, 	'0400' => 1, '1000' => 2, '2200' => 3, '0500' => 4, '9100' => 5, '9300' => 6, '7400' => 7];
+
+	$a = $codiciIva[$a];
+	$b = $codiciIva[$b];
+
+	if ($a > $b) {
+		return 1;
+	} else if  ($a < $b) {
+		return -1;
+	} else {
+		return 0;
+	}
+
+}

@@ -191,14 +191,11 @@ while ($data <= $dataFine) {
 
 		foreach($dc as $numero => $transazione){
 			$delta = round($transazione['importoCalcolatoDaVendite'] - $transazione['importo'], 2);
-			if ( $delta) {
+			/*if ( $delta) {
 				$dc[$numero]['righe'][0]['imponibile'] -= $delta;
 				$dc[$numero]['righe'][0]['importo'] -= $delta;
-			}
+			}*/
 		}
-
-		/*$text = json_encode($dc);
-		print_r($text);*/
 
 		/**
 		 * calcolo il castelletto iva dopo aver corretto le differenze
@@ -294,33 +291,62 @@ while ($data <= $dataFine) {
 			}
 
 			foreach ($vendite as $vendita) {
-
-				if ($vendita['articoloAPeso']) {
-					$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+09.3f%+010d',
-						$sede,
-						"$anno$mese$giorno",
-						$ora,
-						substr($numero, -4),
-						getCounter($numRec),
-						($transazione['importo'] < 0) ? 5 : 0,
-						$vendita['reparto'],
-						$vendita['barcode'],
-						($transazione['importo'] < 0) ? $vendita['peso'] * -1 : $vendita['peso'],
-						abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0)) * (($transazione['importo'] < 0) ? -1 : 1)
-					);
+				if ($transazione['importo'] < 0) {
+					if ($vendita['articoloAPeso']) {
+						$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+09.3f%+010d',
+							$sede,
+							"$anno$mese$giorno",
+							$ora,
+							substr($numero, -4),
+							getCounter($numRec),
+							($transazione['importo'] < 0) ? 5 : 0,
+							$vendita['reparto'],
+							$vendita['barcode'],
+							($transazione['importo'] < 0) ? $vendita['peso'] * -1 : $vendita['peso'],
+							abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0)) * (($transazione['importo'] < 0) ? 1 : -1)
+						);
+					} else {
+						$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
+							$sede,
+							"$anno$mese$giorno",
+							$ora,
+							substr($numero, -4),
+							getCounter($numRec),
+							($transazione['importo'] < 0) ? 5 : 0,
+							$vendita['reparto'],
+							$vendita['barcode'],
+							($transazione['importo'] < 0) ? $vendita['quantita'] : $vendita['quantita'] * -1,
+							abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
+						);
+					}
 				} else {
-					$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
-						$sede,
-						"$anno$mese$giorno",
-						$ora,
-						substr($numero, -4),
-						getCounter($numRec),
-						($transazione['importo'] < 0) ? 5 : 0,
-						$vendita['reparto'],
-						$vendita['barcode'],
-						($transazione['importo'] < 0) ? $vendita['quantita'] * -1 : $vendita['quantita'],
-						abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
-					);
+					if ($vendita['articoloAPeso']) {
+						$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+09.3f%+010d',
+							$sede,
+							"$anno$mese$giorno",
+							$ora,
+							substr($numero, -4),
+							getCounter($numRec),
+							($vendita['importo'] < 0) ? 7 : 0,
+							$vendita['reparto'],
+							$vendita['barcode'],
+							($vendita['importo'] < 0) ? abs($vendita['peso']) * -1 : abs($vendita['peso']),
+							abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0)) * (($vendita['importo'] < 0) ? -1 : 1)
+						);
+					} else {
+						$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
+							$sede,
+							"$anno$mese$giorno",
+							$ora,
+							substr($numero, -4),
+							getCounter($numRec),
+							($vendita['importo'] < 0) ? 7 : 0,
+							$vendita['reparto'],
+							$vendita['barcode'],
+							($vendita['importo'] < 0) ? abs($vendita['quantita']) * -1 : abs($vendita['quantita']),
+							abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
+						);
+					}
 				}
 
 				$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:i:100:%04s:%\' 16s:%011d3000000',
@@ -364,8 +390,6 @@ while ($data <= $dataFine) {
 			);
 
 			foreach ($vendite as $vendita) {
-				$test1 = abs($vendita['importo'] * 100);
-				$test2 = abs($vendita['imposta'] * 100);
 				$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:100:%04s:%\' 16s%+05d%07s%07s',
 					$sede,
 					'001',
@@ -421,7 +445,7 @@ while ($data <= $dataFine) {
 					'',
 					$aliquoteIva[$codice],
 					1,
-					abs(round($imposta['imposta'] * 100, 0))
+					abs(round($imposta['imponibile'] * $aliquoteIva[$codice], 0))
 				);
 			}
 
