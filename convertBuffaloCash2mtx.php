@@ -114,6 +114,21 @@ while ($data <= $dataFine) {
 	}
 
 	/**
+	 * recupero l'elenco degli articoli a peso
+	 */
+	$response = $client->post('/eDatacollect/src/eDatacollect.php',
+		['json' =>
+			[
+				'function' => 'recuperaCodiceArticoliPeso'
+			]
+		]
+	);
+	$elencoArticoliAPeso = [];
+	if ($response->getStatusCode() == 200) {
+		$elencoArticoliAPeso = json_decode($response->getBody()->getContents(), true);
+	}
+
+	/**
 	 * carico le righe fatture dei negozi cash leggendole da Buffalo
 	 */
 	$response = $clientBfl->post('dwh',
@@ -146,7 +161,7 @@ while ($data <= $dataFine) {
 			$quantita = (float)$vendita['quantita'];
 			$pezziPerCartone = (int)$vendita['pezziPerCartone'];
 			$articoloAPeso = false;
-			if ($quantita - floor($quantita) != 0) {
+			if (($quantita - floor($quantita) != 0) or key_exists($vendita['codice'], $elencoArticoliAPeso)) {
 				$peso = $quantita;
 				$quantita = 1;
 				$articoloAPeso = true;
@@ -389,32 +404,120 @@ while ($data <= $dataFine) {
 				round($transazione['importo'] * 100, 0)
 			);
 
+			/**
+			 * Eleiminazione degli storni quando la quantità stornata è identica alla quantità venduta
+
+			foreach ($vendite as $id => $vendita) {
+				if ($vendita['importo'] < 0) {
+					for ($i = $id - 1; $i >= 0; $i--) {
+						if ($vendite[$i]['barcode'] == $vendite[$id]['barcode'] && round($vendite[$i]['quantita'] + $vendite[$id]['quantita'], 2) == 0) {
+							$vendite[$i]['importo'] = 0;
+							$vendite[$i]['imposta'] = 0;
+							$vendite[$id]['importo'] = 0;
+							$vendite[$id]['imposta'] = 0;
+							break;
+						}
+					}
+				}
+			}*/
+
+			/**
+			 * Eleiminazione degli storni quando la quantità stornata è diversa dalla quantità venduta
+
+			foreach ($vendite as $id => $vendita) {
+				if ($vendita['importo'] < 0) {
+					for ($i = $id - 1; $i >= 0; $i--) {
+						if ($vendite[$i]['barcode'] == $vendite[$id]['barcode'] && round($vendite[$i]['quantita'] + $vendite[$id]['quantita'], 2) > 0) {
+							$vendite[$i]['importo'] = round($vendite[$i]['importo'] / $vendite[$i]['quantita'] * ($vendite[$i]['quantita'] + $vendite[$id]['quantita']), 2);
+							$vendite[$i]['imponibile'] = round($vendite[$i]['imponibile'] / $vendite[$i]['quantita'] * ($vendite[$i]['quantita'] + $vendite[$id]['quantita']), 2);
+							$vendite[$i]['imposta'] = $vendite[$i]['importo'] - $vendite[$i]['imponibile'];
+							$vendite[$i]['quantita'] = round($vendite[$i]['quantita'] + $vendite[$id]['quantita'], 0);
+							$vendite[$id]['importo'] = 0;
+							$vendite[$id]['imponibile'] = 0;
+							$vendite[$id]['imposta'] = 0;
+							$vendite[$id]['quantita'] = 0;
+							break;
+						}
+					}
+				}
+			}*/
+
+			/**
+			 * Eliminazione degli storni
+			 */
+			foreach ($vendite as $id => $vendita) {
+				$barcodeDaStornare = $vendite[$id]['barcode'];
+				$quantitaDaStornare = abs(round($vendite[$id]['quantita'], 2));
+				if ($vendita['importo'] < 0) {
+					for ($i = $id - 1; $i >= 0; $i--) {
+						if ($vendite[$i]['barcode'] == $barcodeDaStornare && $quantitaDaStornare > 0) {
+							if (round($vendite[$i]['quantita'], 2) == $quantitaDaStornare) {
+								$vendite[$i]['importo'] = 0;
+								$vendite[$i]['imponibile'] = 0;
+								$vendite[$i]['imposta'] = 0;
+								$vendite[$i]['quantita'] = 0;
+
+								$vendite[$id]['importo'] = 0;
+								$vendite[$id]['imponibile'] = 0;
+								$vendite[$id]['imposta'] = 0;
+								$vendite[$id]['quantita'] = 0;
+								break;
+							} elseif ($vendite[$i]['quantita'] > $quantitaDaStornare) {
+								$vendite[$i]['importo'] = round($vendite[$i]['importo'] / $vendite[$i]['quantita'] * ($vendite[$i]['quantita'] - $quantitaDaStornare), 2);
+								$vendite[$i]['imponibile'] = round($vendite[$i]['imponibile'] / $vendite[$i]['quantita'] * ($vendite[$i]['quantita'] + $vendite[$id]['quantita']), 2);
+								$vendite[$i]['imposta'] = $vendite[$i]['importo'] - $vendite[$i]['imponibile'];
+								$vendite[$i]['quantita'] = round($vendite[$i]['quantita'] + $vendite[$id]['quantita'], 0);
+
+								$vendite[$id]['importo'] = 0;
+								$vendite[$id]['imponibile'] = 0;
+								$vendite[$id]['imposta'] = 0;
+								$vendite[$id]['quantita'] = 0;
+								break;
+							} else {
+								$quantitaDaStornare = round($quantitaDaStornare - $vendite[$i]['quantita'], 2);
+								$vendite[$id]['importo'] = round($vendite[$id]['importo'] / $vendite[$id]['quantita'] * $quantitaDaStornare, 2);
+								$vendite[$id]['imponibile'] = round($vendite[$id]['imponibile'] / $vendite[$id]['quantita'] * $quantitaDaStornare, 2);
+								$vendite[$id]['imposta'] = $vendite[$id]['importo'] - $vendite[$id]['imponibile'];
+								$vendite[$id]['quantita'] = $quantitaDaStornare;
+
+								$vendite[$i]['importo'] = 0;
+								$vendite[$i]['imponibile'] = 0;
+								$vendite[$i]['imposta'] = 0;
+								$vendite[$i]['quantita'] = 0;
+							}
+						}
+					}
+				}
+			}
+
 			foreach ($vendite as $vendita) {
-				$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:100:%04s:%\' 16s%+05d%07s%07s',
-					$sede,
-					'001',
-					"$anno$mese$giorno",
-					$ora,
-					substr($numero, -4),
-					getCounter($numRec),
-					'001',
-					$vendita['barcode'],
-					($transazione['importo'] < 0) ? 1 : ($vendita['importo'] > 0) ? 1 : -1,
-					abs($vendita['importo'] * 100),
-					abs($vendita['imposta'] * 100),
-				);
-				$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:101:%04s:%\' 16s:%04d%\'014s',
-					$sede,
-					'001',
-					"$anno$mese$giorno",
-					$ora,
-					substr($numero, -4),
-					getCounter($numRec),
-					'001',
-					$vendita['barcode'],
-					$vendita['progressivoVendita'],
-					''
-				);
+				if ($vendita['importo'] <> 0) {
+					$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:100:%04s:%\' 16s%+05d%07s%07s',
+						$sede,
+						'001',
+						"$anno$mese$giorno",
+						$ora,
+						substr($numero, -4),
+						getCounter($numRec),
+						'001',
+						$vendita['barcode'],
+						($transazione['importo'] < 0) ? 1 : ($vendita['importo'] > 0) ? 1 : -1,
+						abs($vendita['importo'] * 100),
+						abs($vendita['imposta'] * 100),
+					);
+					$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:101:%04s:%\' 16s:%04d%\'014s',
+						$sede,
+						'001',
+						"$anno$mese$giorno",
+						$ora,
+						substr($numero, -4),
+						getCounter($numRec),
+						'001',
+						$vendita['barcode'],
+						$vendita['progressivoVendita'],
+						''
+					);
+				}
 			}
 
 			ksort($transazione['dettaglioImposta'], SORT_NUMERIC);
