@@ -306,86 +306,88 @@ while ($data <= $dataFine) {
 			}
 
 			foreach ($vendite as $vendita) {
-				if ($transazione['importo'] < 0) {
-					if ($vendita['articoloAPeso']) {
-						$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+09.3f%+010d',
-							$sede,
-							"$anno$mese$giorno",
-							$ora,
-							substr($numero, -4),
-							getCounter($numRec),
-							($transazione['importo'] < 0) ? 5 : 0,
-							$vendita['reparto'],
-							$vendita['barcode'],
-							($transazione['importo'] < 0) ? $vendita['peso'] * -1 : $vendita['peso'],
-							abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0)) * (($transazione['importo'] < 0) ? 1 : -1)
-						);
+				if ($vendita['quantita'] != 0) {
+					if ($transazione['importo'] < 0) {
+						if ($vendita['articoloAPeso']) {
+							$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+09.3f%+010d',
+								$sede,
+								"$anno$mese$giorno",
+								$ora,
+								substr($numero, -4),
+								getCounter($numRec),
+								($transazione['importo'] < 0) ? 5 : 0,
+								$vendita['reparto'],
+								$vendita['barcode'],
+								($transazione['importo'] < 0) ? $vendita['peso'] * -1 : $vendita['peso'],
+								abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0)) * (($transazione['importo'] < 0) ? 1 : -1)
+							);
+						} else {
+							$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
+								$sede,
+								"$anno$mese$giorno",
+								$ora,
+								substr($numero, -4),
+								getCounter($numRec),
+								($transazione['importo'] < 0) ? 5 : 0,
+								$vendita['reparto'],
+								$vendita['barcode'],
+								($transazione['importo'] < 0) ? $vendita['quantita'] : $vendita['quantita'] * -1,
+								abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
+							);
+						}
 					} else {
-						$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
-							$sede,
-							"$anno$mese$giorno",
-							$ora,
-							substr($numero, -4),
-							getCounter($numRec),
-							($transazione['importo'] < 0) ? 5 : 0,
-							$vendita['reparto'],
-							$vendita['barcode'],
-							($transazione['importo'] < 0) ? $vendita['quantita'] : $vendita['quantita'] * -1,
-							abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
-						);
+						if ($vendita['articoloAPeso']) {
+							$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+09.3f%+010d',
+								$sede,
+								"$anno$mese$giorno",
+								$ora,
+								substr($numero, -4),
+								getCounter($numRec),
+								($vendita['importo'] < 0) ? 7 : 0,
+								$vendita['reparto'],
+								$vendita['barcode'],
+								($vendita['importo'] < 0) ? abs($vendita['peso']) * 1 : abs($vendita['peso']),
+								abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0)) * (($vendita['importo'] < 0) ? -1 : 1)
+							);
+						} else {
+							$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
+								$sede,
+								"$anno$mese$giorno",
+								$ora,
+								substr($numero, -4),
+								getCounter($numRec),
+								($vendita['importo'] < 0) ? 7 : 0,
+								$vendita['reparto'],
+								$vendita['barcode'],
+								($vendita['importo'] < 0) ? abs($vendita['quantita']) * -1 : abs($vendita['quantita']),
+								abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
+							);
+						}
 					}
-				} else {
-					if ($vendita['articoloAPeso']) {
-						$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+09.3f%+010d',
-							$sede,
-							"$anno$mese$giorno",
-							$ora,
-							substr($numero, -4),
-							getCounter($numRec),
-							($vendita['importo'] < 0) ? 7 : 0,
-							$vendita['reparto'],
-							$vendita['barcode'],
-							($vendita['importo'] < 0) ? abs($vendita['peso']) * -1 : abs($vendita['peso']),
-							abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0)) * (($vendita['importo'] < 0) ? -1 : 1)
-						);
-					} else {
-						$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
-							$sede,
-							"$anno$mese$giorno",
-							$ora,
-							substr($numero, -4),
-							getCounter($numRec),
-							($vendita['importo'] < 0) ? 7 : 0,
-							$vendita['reparto'],
-							$vendita['barcode'],
-							($vendita['importo'] < 0) ? abs($vendita['quantita']) * -1 : abs($vendita['quantita']),
-							abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
-						);
-					}
+
+					$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:i:100:%04s:%\' 16s:%011d3000000',
+						$sede,
+						"$anno$mese$giorno",
+						$ora,
+						substr($numero, -4),
+						getCounter($numRec),
+						'001',
+						$vendita['barcode'],
+						$vendita['tipoIva']
+					);
+
+					$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:i:101:%04s:%\' 16s:%04d00000000000000',
+						$sede,
+						'001',
+						"$anno$mese$giorno",
+						$ora,
+						substr($numero, -4),
+						getCounter($numRec),
+						'001',
+						$vendita['barcode'],
+						$vendita['progressivoVendita']
+					);
 				}
-
-				$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:i:100:%04s:%\' 16s:%011d3000000',
-					$sede,
-					"$anno$mese$giorno",
-					$ora,
-					substr($numero, -4),
-					getCounter($numRec),
-					'001',
-					$vendita['barcode'],
-					$vendita['tipoIva']
-				);
-
-				$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:i:101:%04s:%\' 16s:%04d00000000000000',
-					$sede,
-					'001',
-					"$anno$mese$giorno",
-					$ora,
-					substr($numero, -4),
-					getCounter($numRec),
-					'001',
-					$vendita['barcode'],
-					$vendita['progressivoVendita']
-				);
 			}
 
 			// forme di pagamento
@@ -406,41 +408,38 @@ while ($data <= $dataFine) {
 
 			/**
 			 * Eleiminazione degli storni quando la quantità stornata è identica alla quantità venduta
-
+			*/
 			foreach ($vendite as $id => $vendita) {
-				if ($vendita['importo'] < 0) {
-					for ($i = $id - 1; $i >= 0; $i--) {
-						if ($vendite[$i]['barcode'] == $vendite[$id]['barcode'] && round($vendite[$i]['quantita'] + $vendite[$id]['quantita'], 2) == 0) {
-							$vendite[$i]['importo'] = 0;
-							$vendite[$i]['imposta'] = 0;
-							$vendite[$id]['importo'] = 0;
-							$vendite[$id]['imposta'] = 0;
-							break;
+				if ($vendita['articoloAPeso']) {
+					if ($vendita['importo'] < 0) {
+						for ($i = $id - 1; $i >= 0; $i--) {
+							if ($vendite[$i]['barcode'] == $vendite[$id]['barcode'] && round($vendite[$i]['peso'] + $vendite[$id]['peso'], 2) == 0 && round($vendite[$i]['importo'] + $vendite[$id]['importo'], 2) == 0) {
+								$vendite[$i]['importo'] = 0;
+								$vendite[$i]['imposta'] = 0;
+								$vendite[$id]['importo'] = 0;
+								$vendite[$id]['imposta'] = 0;
+								$vendite[$id]['peso'] = 0;
+								$vendite[$id]['quantita'] = 0;
+								break;
+							}
+						}
+					}
+				} else {
+					if ($vendita['importo'] < 0) {
+						for ($i = $id - 1; $i >= 0; $i--) {
+							if ($vendite[$i]['barcode'] == $vendite[$id]['barcode'] && round($vendite[$i]['quantita'] + $vendite[$id]['quantita'], 2) == 0 && round($vendite[$i]['importo'] + $vendite[$id]['importo'], 2) == 0) {
+								$vendite[$i]['importo'] = 0;
+								$vendite[$i]['imposta'] = 0;
+								$vendite[$id]['importo'] = 0;
+								$vendite[$id]['imposta'] = 0;
+								$vendite[$id]['quantita'] = 0;
+								$vendite[$id]['peso'] = 0;
+								break;
+							}
 						}
 					}
 				}
-			}*/
-
-			/**
-			 * Eleiminazione degli storni quando la quantità stornata è diversa dalla quantità venduta
-
-			foreach ($vendite as $id => $vendita) {
-				if ($vendita['importo'] < 0) {
-					for ($i = $id - 1; $i >= 0; $i--) {
-						if ($vendite[$i]['barcode'] == $vendite[$id]['barcode'] && round($vendite[$i]['quantita'] + $vendite[$id]['quantita'], 2) > 0) {
-							$vendite[$i]['importo'] = round($vendite[$i]['importo'] / $vendite[$i]['quantita'] * ($vendite[$i]['quantita'] + $vendite[$id]['quantita']), 2);
-							$vendite[$i]['imponibile'] = round($vendite[$i]['imponibile'] / $vendite[$i]['quantita'] * ($vendite[$i]['quantita'] + $vendite[$id]['quantita']), 2);
-							$vendite[$i]['imposta'] = $vendite[$i]['importo'] - $vendite[$i]['imponibile'];
-							$vendite[$i]['quantita'] = round($vendite[$i]['quantita'] + $vendite[$id]['quantita'], 0);
-							$vendite[$id]['importo'] = 0;
-							$vendite[$id]['imponibile'] = 0;
-							$vendite[$id]['imposta'] = 0;
-							$vendite[$id]['quantita'] = 0;
-							break;
-						}
-					}
-				}
-			}*/
+			}
 
 			/**
 			 * Eliminazione degli storni
@@ -464,9 +463,9 @@ while ($data <= $dataFine) {
 								break;
 							} elseif ($vendite[$i]['quantita'] > $quantitaDaStornare) {
 								$vendite[$i]['importo'] = round($vendite[$i]['importo'] / $vendite[$i]['quantita'] * ($vendite[$i]['quantita'] - $quantitaDaStornare), 2);
-								$vendite[$i]['imponibile'] = round($vendite[$i]['imponibile'] / $vendite[$i]['quantita'] * ($vendite[$i]['quantita'] + $vendite[$id]['quantita']), 2);
+								$vendite[$i]['imponibile'] = round($vendite[$i]['imponibile'] / $vendite[$i]['quantita'] * ($vendite[$i]['quantita'] - $quantitaDaStornare), 2);
 								$vendite[$i]['imposta'] = $vendite[$i]['importo'] - $vendite[$i]['imponibile'];
-								$vendite[$i]['quantita'] = round($vendite[$i]['quantita'] + $vendite[$id]['quantita'], 0);
+								$vendite[$i]['quantita'] = round($vendite[$i]['quantita'] - $quantitaDaStornare, 0);
 
 								$vendite[$id]['importo'] = 0;
 								$vendite[$id]['imponibile'] = 0;
