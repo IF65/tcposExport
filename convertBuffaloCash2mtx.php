@@ -305,6 +305,27 @@ while ($data <= $dataFine) {
 				$vendite[] = $vendita;
 			}
 
+			usort($vendite, function ($item1, $item2) {
+				$order = $item1['barcode'] <=> $item2['barcode'];
+				if ($order == 0) {
+					$order = ($item1['importo'] < 0) <=> ($item2['importo'] < 0);
+					if ($order == 0) {
+						$order = abs($item1['quantita']) <=> abs($item2['quantita']);
+						if ($order == 0) {
+							if ($item1['peso'] < 0 && $item2['peso'] < 0) {
+								$order = $item2['peso'] <=> $item1['peso'];
+							} else {
+								$order = $item1['peso'] <=> $item2['peso'];
+							}
+						}
+					}
+				}
+				return $order;
+			});
+			for ($i = 0; $i < count($vendite); $i++ ) {
+				$vendite[$i]['progressivoVendita'] = $i + 1;
+			}
+
 			foreach ($vendite as $vendita) {
 				if ($vendita['quantita'] != 0) {
 					if ($transazione['importo'] < 0) {
@@ -318,8 +339,8 @@ while ($data <= $dataFine) {
 								($transazione['importo'] < 0) ? 5 : 0,
 								$vendita['reparto'],
 								$vendita['barcode'],
-								($transazione['importo'] < 0) ? $vendita['peso'] * -1 : $vendita['peso'],
-								abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0)) * (($transazione['importo'] < 0) ? 1 : -1)
+								($transazione['importo'] < 0) ? $vendita['peso'] * 1 : $vendita['peso'],
+								abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0)) * (($transazione['importo'] < 0) ? -1 : -1)
 							);
 						} else {
 							$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
@@ -445,12 +466,15 @@ while ($data <= $dataFine) {
 			 * Eliminazione degli storni
 			 */
 			foreach ($vendite as $id => $vendita) {
+				if ($numero == 390108) {
+					echo "\n";
+				}
 				$barcodeDaStornare = $vendite[$id]['barcode'];
 				$quantitaDaStornare = abs(round($vendite[$id]['quantita'], 2));
 				if ($vendita['importo'] < 0) {
 					for ($i = $id - 1; $i >= 0; $i--) {
 						if ($vendite[$i]['barcode'] == $barcodeDaStornare && $quantitaDaStornare > 0) {
-							if (round($vendite[$i]['quantita'], 2) == $quantitaDaStornare) {
+							if (round($vendite[$i]['quantita'], 2) == $quantitaDaStornare and $vendite[$i]['importo'] >= 0) {
 								$vendite[$i]['importo'] = 0;
 								$vendite[$i]['imponibile'] = 0;
 								$vendite[$i]['imposta'] = 0;
@@ -461,7 +485,7 @@ while ($data <= $dataFine) {
 								$vendite[$id]['imposta'] = 0;
 								$vendite[$id]['quantita'] = 0;
 								break;
-							} elseif ($vendite[$i]['quantita'] > $quantitaDaStornare) {
+								} elseif ($vendite[$i]['quantita'] > $quantitaDaStornare and $vendite[$i]['importo'] >= 0) {
 								$vendite[$i]['importo'] = round($vendite[$i]['importo'] / $vendite[$i]['quantita'] * ($vendite[$i]['quantita'] - $quantitaDaStornare), 2);
 								$vendite[$i]['imponibile'] = round($vendite[$i]['imponibile'] / $vendite[$i]['quantita'] * ($vendite[$i]['quantita'] - $quantitaDaStornare), 2);
 								$vendite[$i]['imposta'] = $vendite[$i]['importo'] - $vendite[$i]['imponibile'];
@@ -473,16 +497,18 @@ while ($data <= $dataFine) {
 								$vendite[$id]['quantita'] = 0;
 								break;
 							} else {
-								$quantitaDaStornare = round($quantitaDaStornare - $vendite[$i]['quantita'], 2);
-								$vendite[$id]['importo'] = round($vendite[$id]['importo'] / $vendite[$id]['quantita'] * $quantitaDaStornare, 2);
-								$vendite[$id]['imponibile'] = round($vendite[$id]['imponibile'] / $vendite[$id]['quantita'] * $quantitaDaStornare, 2);
-								$vendite[$id]['imposta'] = $vendite[$id]['importo'] - $vendite[$id]['imponibile'];
-								$vendite[$id]['quantita'] = $quantitaDaStornare;
+								if ($vendite[$i]['importo'] >= 0) {
+									$quantitaDaStornare = round($quantitaDaStornare - $vendite[$i]['quantita'], 2);
+									$vendite[$id]['importo'] = round($vendite[$id]['importo'] / $vendite[$id]['quantita'] * $quantitaDaStornare, 2);
+									$vendite[$id]['imponibile'] = round($vendite[$id]['imponibile'] / $vendite[$id]['quantita'] * $quantitaDaStornare, 2);
+									$vendite[$id]['imposta'] = $vendite[$id]['importo'] - $vendite[$id]['imponibile'];
+									$vendite[$id]['quantita'] = $quantitaDaStornare;
 
-								$vendite[$i]['importo'] = 0;
-								$vendite[$i]['imponibile'] = 0;
-								$vendite[$i]['imposta'] = 0;
-								$vendite[$i]['quantita'] = 0;
+									$vendite[$i]['importo'] = 0;
+									$vendite[$i]['imponibile'] = 0;
+									$vendite[$i]['imposta'] = 0;
+									$vendite[$i]['quantita'] = 0;
+								}
 							}
 						}
 					}
@@ -501,8 +527,8 @@ while ($data <= $dataFine) {
 						'001',
 						$vendita['barcode'],
 						($transazione['importo'] < 0) ? 1 : ($vendita['importo'] > 0) ? 1 : -1,
-						abs($vendita['importo'] * 100),
-						abs($vendita['imposta'] * 100),
+						abs(round($vendita['importo'] * 100, 0)),
+						abs(round($vendita['imposta'] * 100, 0)),
 					);
 					$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:101:%04s:%\' 16s:%04d%\'014s',
 						$sede,

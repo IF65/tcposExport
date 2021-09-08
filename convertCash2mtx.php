@@ -82,11 +82,11 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 		}
 
 		$caricamentoOk = true;
-		if (ftp_chdir($connId, '/cobol/dat')) {
+		/*if (ftp_chdir($connId, '/cobol/dat')) {
 			if (!ftp_get($connId, $localPath . $fileName . '.DAT', $fileName . '.DAT', $mode = FTP_BINARY, $offset = 0)) {
 				$caricamentoOk = false;
 			}
-		}
+		}*/
 
 		ftp_close($connId);
 
@@ -105,7 +105,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 			 * carico il file scaricato via ftp e poi lo elimino
 			 */
 			$text = file_get_contents($localPath . $fileName . '.DAT');
-			unlink($localPath . $fileName . '.DAT');
+			//unlink($localPath . $fileName . '.DAT');
 			$rows = explode("\r\n", $text);
 
 			/**
@@ -150,6 +150,21 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 			$elencoReparti = [];
 			if ($response->getStatusCode() == 200) {
 				$elencoReparti = json_decode($response->getBody()->getContents(), true);
+			}
+
+			/**
+			 * recupero l'elenco degli articoli a peso
+			 */
+			$response = $client->post('/eDatacollect/src/eDatacollect.php',
+				['json' =>
+					[
+						'function' => 'recuperaCodiceArticoliPeso'
+					]
+				]
+			);
+			$elencoArticoliAPeso = [];
+			if ($response->getStatusCode() == 200) {
+				$elencoArticoliAPeso = json_decode($response->getBody()->getContents(), true);
 			}
 
 			/**
@@ -221,7 +236,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 					$pezziPerCartone = ((int)$matches[5] != 0) ? (int)$matches[5] : 1;
 					$quantita = (($matches[4] / 100) != 0) ? ($matches[4] / 100) * $pezziPerCartone : 1;
 					$articoloAPeso = false;
-					if ($quantita - floor($quantita) != 0) {
+					if (($quantita - floor($quantita) != 0) or key_exists($codiceArticolo, $elencoArticoliAPeso)) {
 						$peso = $quantita;
 						$quantita = 1;
 						$articoloAPeso = true;
@@ -299,6 +314,24 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 				/**
 				 * vendite
 				 */
+
+				usort($transazione['vendite'], function ($item1, $item2) {
+					$order = $item1['barcode'] <=> $item2['barcode'];
+					if ($order == 0) {
+						$order = $item1['storno'] <=> $item2['storno'];
+						if ($order == 0) {
+							$order = $item1['quantita'] <=> $item2['quantita'];
+							if ($order == 0) {
+								$order = $item1['peso'] <=> $item2['peso'];
+							}
+						}
+					}
+					return $order;
+				});
+				for ($i = 0; $i < count($transazione['vendite']); $i++ ) {
+					$transazione['vendite'][$i]['progressivoVendita'] = $i + 1;
+				}
+
 				foreach ($transazione['vendite'] as $vendita) {
 					if ($vendita['storno']) {
 						if ($vendita['articoloAPeso']) {
@@ -311,7 +344,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 								7,
 								$vendita['reparto'],
 								$vendita['barcode'],
-								abs($vendita['peso'] ) * -1,
+								abs($vendita['peso']),
 								abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0)) * -1
 							);
 						} else {
@@ -324,11 +357,12 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 								7,
 								$vendita['reparto'],
 								$vendita['barcode'],
-								abs($vendita['quantita']) * -1,
+								abs($vendita['quantita']) * -1 ,
 								abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
 							);
 						}
 					} else {
+						$importoUnitario = abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0));
 						if ($vendita['articoloAPeso']) {
 							$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+09.3f%+010d',
 								$sede,
@@ -340,7 +374,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 								$vendita['reparto'],
 								$vendita['barcode'],
 								($transazione['tipo'] == 'A') ? $vendita['peso'] * -1 : $vendita['peso'],
-								abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
+								($transazione['tipo'] == 'A') ? $importoUnitario * -1 : $importoUnitario
 							);
 						} else {
 							$righe[] = sprintf('%04s:001:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
@@ -353,7 +387,7 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 								$vendita['reparto'],
 								$vendita['barcode'],
 								($transazione['tipo'] == 'A') ? $vendita['quantita'] * -1 : $vendita['quantita'],
-								abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
+								$importoUnitario
 							);
 						}
 					}
@@ -401,36 +435,128 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 				/**
 				 * iva dettagliata vendite
 				 */
+
+				/**
+				 * Eliminazione degli storni quando la quantità stornata è identica alla quantità venduta
+				 */
+				foreach ($transazione['vendite'] as $id => $vendita) {
+					if ($vendita['articoloAPeso']) {
+						if ($vendita['storno']) {
+							for ($i = $id - 1; $i >= 0; $i--) {
+								if ($transazione['vendite'][$i]['barcode'] == $transazione['vendite'][$id]['barcode'] && round($transazione['vendite'][$i]['peso'] - $transazione['vendite'][$id]['peso'], 2) == 0 && round($transazione['vendite'][$i]['importo'] - $transazione['vendite'][$id]['importo'], 2) == 0) {
+									$transazione['vendite'][$i]['importo'] = 0;
+									$transazione['vendite'][$i]['imponibile'] = 0;
+									$transazione['vendite'][$i]['imposta'] = 0;
+									$transazione['vendite'][$id]['importo'] = 0;
+									$transazione['vendite'][$id]['imponibile'] = 0;
+									$transazione['vendite'][$id]['imposta'] = 0;
+									$transazione['vendite'][$id]['peso'] = 0;
+									$transazione['vendite'][$id]['quantita'] = 0;
+									break;
+								}
+							}
+						}
+					} else {
+						if ($vendita['storno']) {
+							for ($i = $id - 1; $i >= 0; $i--) {
+								if ($transazione['vendite'][$i]['barcode'] == $transazione['vendite'][$id]['barcode'] && round($transazione['vendite'][$i]['quantita'] - $transazione['vendite'][$id]['quantita'], 2) == 0 && round($transazione['vendite'][$i]['importo'] - $transazione['vendite'][$id]['importo'], 2) == 0) {
+									$transazione['vendite'][$i]['importo'] = 0;
+									$transazione['vendite'][$i]['imponibile'] = 0;
+									$transazione['vendite'][$i]['imposta'] = 0;
+									$transazione['vendite'][$id]['importo'] = 0;
+									$transazione['vendite'][$id]['imponibile'] = 0;
+									$transazione['vendite'][$id]['imposta'] = 0;
+									$transazione['vendite'][$id]['quantita'] = 0;
+									$transazione['vendite'][$id]['peso'] = 0;
+									break;
+								}
+							}
+						}
+					}
+				}
+
+				/**
+				 * Eliminazione degli storni
+				 */
+				foreach ($transazione['vendite'] as $id => $vendita) {
+					$barcodeDaStornare = $transazione['vendite'][$id]['barcode'];
+					$quantitaDaStornare = abs(round($transazione['vendite'][$id]['quantita'], 2));
+					if ($vendita['storno']) {
+						for ($i = $id - 1; $i >= 0; $i--) {
+							if ($transazione['vendite'][$i]['barcode'] == $barcodeDaStornare && $quantitaDaStornare > 0) {
+								if (round($transazione['vendite'][$i]['quantita'], 2) == $quantitaDaStornare and $transazione['vendite'][$i]['importo'] >= 0) {
+									$transazione['vendite'][$i]['importo'] = 0;
+									$transazione['vendite'][$i]['imponibile'] = 0;
+									$transazione['vendite'][$i]['imposta'] = 0;
+									$transazione['vendite'][$i]['quantita'] = 0;
+
+									$transazione['vendite'][$id]['importo'] = 0;
+									$transazione['vendite'][$id]['imponibile'] = 0;
+									$transazione['vendite'][$id]['imposta'] = 0;
+									$transazione['vendite'][$id]['quantita'] = 0;
+									break;
+								} elseif ($transazione['vendite'][$i]['quantita'] > $quantitaDaStornare and $transazione['vendite'][$i]['importo'] >= 0) {
+									$transazione['vendite'][$i]['importo'] = round($transazione['vendite'][$i]['importo'] / $transazione['vendite'][$i]['quantita'] * ($transazione['vendite'][$i]['quantita'] - $quantitaDaStornare), 2);
+									$transazione['vendite'][$i]['imponibile'] = round($transazione['vendite'][$i]['imponibile'] / $transazione['vendite'][$i]['quantita'] * ($transazione['vendite'][$i]['quantita'] - $quantitaDaStornare), 2);
+									$transazione['vendite'][$i]['imposta'] = $transazione['vendite'][$i]['importo'] - $transazione['vendite'][$i]['imponibile'];
+									$transazione['vendite'][$i]['quantita'] = round($transazione['vendite'][$i]['quantita'] - $quantitaDaStornare, 0);
+
+									$transazione['vendite'][$id]['importo'] = 0;
+									$transazione['vendite'][$id]['imponibile'] = 0;
+									$transazione['vendite'][$id]['imposta'] = 0;
+									$transazione['vendite'][$id]['quantita'] = 0;
+									break;
+								} else {
+									if ($transazione['vendite'][$i]['importo'] >= 0) {
+										$quantitaDaStornare = round($quantitaDaStornare - $transazione['vendite'][$i]['quantita'], 2);
+										$transazione['vendite'][$id]['importo'] = round($transazione['vendite'][$id]['importo'] / $transazione['vendite'][$id]['quantita'] * $quantitaDaStornare, 2);
+										$transazione['vendite'][$id]['imponibile'] = round($transazione['vendite'][$id]['imponibile'] / $transazione['vendite'][$id]['quantita'] * $quantitaDaStornare, 2);
+										$transazione['vendite'][$id]['imposta'] = $transazione['vendite'][$id]['importo'] - $transazione['vendite'][$id]['imponibile'];
+										$transazione['vendite'][$id]['quantita'] = $quantitaDaStornare;
+
+										$transazione['vendite'][$i]['importo'] = 0;
+										$transazione['vendite'][$i]['imponibile'] = 0;
+										$transazione['vendite'][$i]['imposta'] = 0;
+										$transazione['vendite'][$i]['quantita'] = 0;
+									}
+								}
+							}
+						}
+					}
+				}
+
 				foreach ($transazione['vendite'] as $vendita) {
 					$segno = 1;
 					if ($vendita['storno']) {
 						$segno = -1;
 					}
-					$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:100:%04s:%\' 16s%+05d%07s%07s',
-						$sede,
-						'001',
-						"$anno$mese$giorno",
-						$ora,
-						substr($numero, -4),
-						getCounter($numRec),
-						'001',
-						$vendita['barcode'],
-						$segno,
-						abs($vendita['importo'] * 100),
-						abs($vendita['imposta'] * 100),
-					);
-					$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:101:%04s:%\' 16s:%04d%\'014s',
-						$sede,
-						'001',
-						"$anno$mese$giorno",
-						$ora,
-						substr($numero, -4),
-						getCounter($numRec),
-						'001',
-						$vendita['barcode'],
-						$vendita['progressivoVendita'],
-						''
-					);
+					if ($vendita['importo'] != 0 || $vendita['imposta'] != 0) {
+						$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:100:%04s:%\' 16s%+05d%07s%07s',
+							$sede,
+							'001',
+							"$anno$mese$giorno",
+							$ora,
+							substr($numero, -4),
+							getCounter($numRec),
+							'001',
+							$vendita['barcode'],
+							$segno,
+							abs($vendita['importo'] * 100),
+							abs($vendita['imposta'] * 100),
+						);
+						$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:v:101:%04s:%\' 16s:%04d%\'014s',
+							$sede,
+							'001',
+							"$anno$mese$giorno",
+							$ora,
+							substr($numero, -4),
+							getCounter($numRec),
+							'001',
+							$vendita['barcode'],
+							$vendita['progressivoVendita'],
+							''
+						);
+					}
 				}
 
 				/**
