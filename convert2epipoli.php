@@ -12,7 +12,7 @@ $client = new Client([
 
 // costanti
 // -----------------------------------------------------------
-$sede = '0501';
+$sede = '0600';
 
 $timeZone = new DateTimeZone('Europe/Rome');
 
@@ -20,9 +20,8 @@ $dataInizio = new DateTime('2021-01-07', $timeZone);
 $dataFine = new DateTime('2021-01-07', $timeZone);
 
 $codiceTranscodificaSede = [
-	'0501' => '0500',
-	'0201' => '6001',
-	'0155' => '6002'
+	'0600' => '0600',
+	'0700' => '0700'
 ];
 
 $codiceCampagnaSconto = '10501';
@@ -135,10 +134,10 @@ while ($data <= $dataFine) {
                 ''
             );
 
+	        $totaleBuoniPasto = 0;
             foreach ($transaction['articles'] as $article) {
                 if (preg_match( '/^\d{7}$/', $article['article_code'] )) {
 
-                    $totaleBuoniPasto = 0;
                     if ($article['article_code'] == '0000-0001' or $article['article_code'] == '0000-0001') {
                         $totaleBuoniPasto += round( $article['article_price'], 2 );
                     }
