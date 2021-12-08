@@ -67,7 +67,16 @@ try {
 	       			closed
 				from mtx.control 
 				where ddate >= date_sub(current_date(), interval 2 week) and ddate < current_date() 
-				order by ddate, store";
+				union
+				select 
+				       '0500' store, 
+				       ddate, 
+				       sum(totaltaxableamount) totalamount, 
+				       count(distinct reg, trans) customercount, 
+				       0 totalhours, 
+				       0 closed
+				from sales where store = '0501' and reg >= '021' and reg <= '049' and ddate >= date_sub(current_date(), interval 2 week) and ddate < current_date() 
+				group by 1,2";
 	$h_query = $db->prepare($stmt);
 	$h_query->execute();
 	$rows = $h_query->fetchAll(\PDO::FETCH_ASSOC);
