@@ -80,10 +80,12 @@ $transcodificaSede = [
 	'6003' => '0142',
 	'6004' => '0203',
 	'6005' => '0148',
-	'6006' => '0132'
+	'6006' => '0132',
+	'6007' => '0115',
+	'6009' => '0204'
 ];
 
-$menuValidi = ['3', '4', '5', '8', '11', '12', '13', '14', '15'];
+$menuValidi = ['1','2','3', '4', '5','6','7','8','9','10','11', '12', '13', '14', '15','16','17','18','19','20'];
 
 $client = new Client([
 	'base_uri' => 'http://10.11.14.128/',
@@ -324,7 +326,7 @@ while ($data <= $dataFine) {
 							$ora,
 							substr($transaction['trans_num'], -4),
 							++$numRec,
-							$sale['menu_barcode'],
+							($sale['menu_barcode'] == '') ? '9770110000054' : $sale['menu_barcode'],
 							round($menu['price'] * -100, 0)
 						);
 					}
@@ -502,7 +504,7 @@ while ($data <= $dataFine) {
 					++$numRec,
 					$transaction['till_code'],
 					$sale['article_barcode'],
-					($transaction['total_amount'] < 0) ? 1 : ($price > 0) ? 1 : -1,
+					($transaction['total_amount'] < 0) ? 1 : (($price > 0) ? 1 : -1),
 					abs($price),
 					abs(round($price - round($price / ($sale['vat_percent'] + 100) * 100, 0), 0))
 				);
