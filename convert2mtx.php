@@ -504,7 +504,7 @@ while ($data <= $dataFine) {
 					++$numRec,
 					$transaction['till_code'],
 					$sale['article_barcode'],
-					($transaction['total_amount'] < 0) ? 1 : (($price > 0) ? 1 : -1),
+					(($transaction['total_amount'] < 0) ? 1 : (($price > 0) ? 1 : -1)),
 					abs($price),
 					abs(round($price - round($price / ($sale['vat_percent'] + 100) * 100, 0), 0))
 				);

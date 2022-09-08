@@ -3,23 +3,24 @@
 
 require 'vendor/autoload.php';
 
+use GetOpt\ArgumentException\Missing;
 use GuzzleHttp\Client;
 use GetOpt\GetOpt;
 use GetOpt\Option;
 
 $timeZone = new DateTimeZone('Europe/Rome');
-$currentDate = (new DateTime('now', $timeZone));
+$currentDate = new DateTime('now', $timeZone);
 $yesterday = $currentDate->sub(new DateInterval('P1D'));
 
 $options = new GetOpt([
 	Option::create('i', 'inizio', GetOpt::REQUIRED_ARGUMENT )
 		->setDescription("Data inizio caricamento. (Default ".$yesterday->format('Y-m-d').").")
 		->setDefaultValue($yesterday->format('Y-m-d'))->setValidation(function ($value) {
-			return (preg_match('/^\d{4}\-\d{2}\-\d{2}$/', $value)) ? $value : '';
+			return (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) ? $value : '';
 		}),
 	Option::create('f', 'fine', GetOpt::OPTIONAL_ARGUMENT )
 		->setDescription('Data fine caricamento. (Se mancante viene presa come data di fine la data d\'inizio).')->setValidation(function ($value) {
-			return (preg_match('/^\d{4}\-\d{2}\-\d{2}$/', $value)) ? $value : '';
+			return (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) ? $value : '';
 		}),
 	Option::create('s', 'sede', GetOpt::REQUIRED_ARGUMENT )
 		->setDescription('Sede da caricare.')->setValidation(function ($value) {
@@ -56,22 +57,10 @@ $codiciIva = ['0000' => 7, '9931' => 0, 	'0400' => 1, '1000' => 2, '2200' => 3, 
 $aliquoteIva = [0 => 0, 1 => 4, 2 => 10, 3 => 22, 4 => 5, 5 => 0, 6 => 0, 7 => 0];
 $ip = ['0012' => '192.168.239.20', '0016' => '192.168.216.10', '0018' => '192.168.218.10'];
 
-if (preg_match('/^001(?:2|6|8)/', $sede)) {
+if (preg_match('/^001[268]/', $sede)) {
 
 	$data = clone $dataInizio;
 	while ($data <= $dataFine) {
-		/**
-		 * creo il client ftp per scaricare il file
-		 */
-		$connId = ftp_connect($ip[str_pad($sede, 4, "0", STR_PAD_LEFT)]);
-		$loginResult = ftp_login($connId, 'manager', 'manager');
-
-		if ((!$connId) || (!$loginResult)) {
-			echo "FTP connection has failed!";
-			echo "Attempted to connect to $ip[$sede] for user manager";
-			exit;
-		}
-
 		$localPath = '/Users/if65/Desktop/DC/';
 		$fileName = '';
 		if (preg_match('/^\d\d(\d\d)-(\d\d)-(\d\d)$/', $data->format('Y-m-d'), $matches)) {
@@ -81,14 +70,30 @@ if (preg_match('/^001(?:2|6|8)/', $sede)) {
 			}
 		}
 
-		$caricamentoOk = true;
-		if (ftp_chdir($connId, '/cobol/dat')) {
-			if (!ftp_get($connId, $localPath . $fileName . '.DAT', $fileName . '.DAT', $mode = FTP_BINARY, $offset = 0)) {
-				$caricamentoOk = false;
-			}
-		}
+		/**
+		 * creo il client ftp per scaricare il file
+		 */
+		if (!$debug) {
+			$connId = ftp_connect($ip[str_pad($sede, 4, "0", STR_PAD_LEFT)]);
+			$loginResult = ftp_login($connId, 'manager', 'manager');
 
-		ftp_close($connId);
+			if ((!$connId) || (!$loginResult)) {
+				echo "FTP connection has failed!";
+				echo "Attempted to connect to $ip[$sede] for user manager";
+				exit;
+			}
+
+			$caricamentoOk = true;
+			if (ftp_chdir($connId, '/cobol/dat')) {
+				if (!ftp_get($connId, $localPath . $fileName . '.DAT', $fileName . '.DAT', $mode = FTP_BINARY, $offset = 0)) {
+					$caricamentoOk = false;
+				}
+			}
+
+			ftp_close($connId);
+		} else {
+			$caricamentoOk = true; // fare attenzione alla presenza del file
+		}
 
 		if ($caricamentoOk) {
 
@@ -631,36 +636,36 @@ function comp2num(string $packedNum): float
 	$negativo = ["}" => 0, "J" => 1, "K" => 2, "L" => 3, "M" => 4, "N" => 5, "O" => 6, "P" => 7, "Q" => 8, "R" => 9];
 	$positivo = ["{" => 0, "A" => 1, "B" => 2, "C" => 3, "D" => 4, "E" => 5, "F" => 6, "G" => 7, "H" => 8, "I" => 9];
 
-	if (preg_match("/^(\d*)(\}|J|K|L|M|N|O|P|Q|R)(.*)$/", $packedNum, $matches)) {
+	if (preg_match("/^(\d*)([}JKLMNOPQR])(.*)$/", $packedNum, $matches)) {
 		return ($matches[1] . $negativo[$matches[2]] . $matches[3]) * -1;
 	}
 
-	if (preg_match("/^(\d*)(\{|A|B|C|D|E|F|G|H|I)(.*)$/", $packedNum, $matches)) {
+	if (preg_match("/^(\d*)([{ABCDEFGHI])(.*)$/", $packedNum, $matches)) {
 		return ($matches[1] . $positivo[$matches[2]] . $matches[3]) * 1;
 	}
 
 	return 0;
 }
 
-function get_ean_checkdigit($ean12, $full = false){
+function get_ean_checkdigit($ean12, $full = false): string
+{
 
-	$ean12 =(string)$ean12;
+	$ean12 = (string)$ean12;
 	// 1. Sommo le posizioni dispari
-	$even_sum = $ean12{1} + $ean12{3} + $ean12{5} + $ean12{7} + $ean12{9} + $ean12{11};
+	$even_sum = (int)$ean12[1] + (int)$ean12[3] + (int)$ean12[5] + (int)$ean12[7] + (int)$ean12[9] + (int)$ean12[11];
 	// 2. le moltiplico x 3
 	$even_sum_three = $even_sum * 3;
 	// 3. Sommo le posizioni pari
-	$odd_sum = $ean12{0} + $ean12{2} + $ean12{4} + $ean12{6} + $ean12{8} + $ean12{10};
+	$odd_sum = (int)$ean12[0] + (int)$ean12[2] + (int)$ean12[4] + (int)$ean12[6] + (int)$ean12[8] + (int)$ean12[10];
 	// 4. Sommo i parziali precedenti
 	$total_sum = $even_sum_three + $odd_sum;
 	// 5. Il check digit è il numero più piccolo sottomultiplo di 10
-	$next_ten = (ceil($total_sum/10))*10;
+	$next_ten = (ceil($total_sum / 10)) * 10;
 	$check_digit = $next_ten - $total_sum;
 
-	if($full==true) { // Ritorna tutto l'ean
-		return $ean12.$check_digit;
-	}
-	else { // Ritorna solo il check-digit
+	if ($full) { // Ritorna tutto l'ean
+		return $ean12 . $check_digit;
+	} else { // Ritorna solo il check-digit
 		return $check_digit;
 	}
 }

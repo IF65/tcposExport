@@ -3,7 +3,8 @@
     "description": "Esportazione dati TcPos in vari formati",
     "require": {
         "guzzlehttp/guzzle": "^7.3",
-        "ulrichsg/getopt-php": "^3.4"
+        "ulrichsg/getopt-php": "^v4.0.2",
+      "ext-ftp": "*"
     },
     "authors": [
         {

@@ -1,5 +1,5 @@
 <?php
-@ini_set('memory_limit','8192M');
+@ini_set('memory_limit', '8192M');
 
 require 'vendor/autoload.php';
 
@@ -15,20 +15,20 @@ $currentDate = (new DateTime('now', $timeZone));
 $yesterday = $currentDate->sub(new DateInterval('P1D'));
 
 $options = new GetOpt([
-	Option::create('i', 'inizio', GetOpt::REQUIRED_ARGUMENT )
-		->setDescription("Data inizio caricamento. (Default ".$yesterday->format('Y-m-d').").")
+	Option::create('i', 'inizio', GetOpt::REQUIRED_ARGUMENT)
+		->setDescription("Data inizio caricamento. (Default " . $yesterday->format('Y-m-d') . ").")
 		->setDefaultValue($yesterday->format('Y-m-d'))->setValidation(function ($value) {
 			return (preg_match('/^\d{4}\-\d{2}\-\d{2}$/', $value)) ? $value : '';
 		}),
-	Option::create('f', 'fine', GetOpt::OPTIONAL_ARGUMENT )
+	Option::create('f', 'fine', GetOpt::OPTIONAL_ARGUMENT)
 		->setDescription('Data fine caricamento. (Se mancante viene presa come data di fine la data d\'inizio).')->setValidation(function ($value) {
 			return (preg_match('/^\d{4}\-\d{2}\-\d{2}$/', $value)) ? $value : '';
 		}),
-	Option::create('s', 'sede', GetOpt::REQUIRED_ARGUMENT )
+	Option::create('s', 'sede', GetOpt::REQUIRED_ARGUMENT)
 		->setDescription('Sede da caricare.')->setValidation(function ($value) {
 			return (preg_match('/^\d{4}$/', $value)) ? $value : '';
 		}),
-	Option::create('d', 'debug', GetOpt::NO_ARGUMENT )
+	Option::create('d', 'debug', GetOpt::NO_ARGUMENT)
 		->setDescription('Imposta modalità debug.')
 ]);
 
@@ -167,7 +167,7 @@ while ($data <= $dataFine) {
 				$articoloAPeso = true;
 			}
 
-			if (! $articoloAPeso) {
+			if (!$articoloAPeso) {
 				$quantita = (float)$vendita['quantita'] * (($pezziPerCartone != 0) ? $pezziPerCartone : 1);
 			}
 
@@ -184,7 +184,7 @@ while ($data <= $dataFine) {
 			];
 
 			/** totali presenti sulla fattura (arrivano direttamente da buffalo)*/
-			if (! key_exists('imponibile', $dc[$vendita['numero']])) {
+			if (!key_exists('imponibile', $dc[$vendita['numero']])) {
 				$dc[$vendita['numero']]['imponibile'] = (float)$vendita['totaleImponibile'];
 				$dc[$vendita['numero']]['imposta'] = (float)$vendita['totaleImposta'];
 				$dc[$vendita['numero']]['importo'] = (float)$vendita['totaleFattura'];
@@ -204,7 +204,7 @@ while ($data <= $dataFine) {
 			$elencoArticoli[] = (string)$vendita['codice'];
 		}
 
-		foreach($dc as $numero => $transazione){
+		foreach ($dc as $numero => $transazione) {
 			$delta = round($transazione['importoCalcolatoDaVendite'] - $transazione['importo'], 2);
 			/*if ( $delta) {
 				$dc[$numero]['righe'][0]['imponibile'] -= $delta;
@@ -215,7 +215,7 @@ while ($data <= $dataFine) {
 		/**
 		 * calcolo il castelletto iva dopo aver corretto le differenze
 		 */
-		foreach($dc as $numero => $transazione) {
+		foreach ($dc as $numero => $transazione) {
 			foreach ($dc[$numero]['righe'] as $index => $vendita) {
 				if (key_exists('dettaglioImposta', $dc[$numero])) {
 					if (key_exists($vendita['tipoIva'], $dc[$numero]['dettaglioImposta'])) {
@@ -322,7 +322,7 @@ while ($data <= $dataFine) {
 				}
 				return $order;
 			});
-			for ($i = 0; $i < count($vendite); $i++ ) {
+			for ($i = 0; $i < count($vendite); $i++) {
 				$vendite[$i]['progressivoVendita'] = $i + 1;
 			}
 
@@ -429,7 +429,7 @@ while ($data <= $dataFine) {
 
 			/**
 			 * Eleiminazione degli storni quando la quantità stornata è identica alla quantità venduta
-			*/
+			 */
 			foreach ($vendite as $id => $vendita) {
 				if ($vendita['articoloAPeso']) {
 					if ($vendita['importo'] < 0) {
@@ -485,7 +485,7 @@ while ($data <= $dataFine) {
 								$vendite[$id]['imposta'] = 0;
 								$vendite[$id]['quantita'] = 0;
 								break;
-								} elseif ($vendite[$i]['quantita'] > $quantitaDaStornare and $vendite[$i]['importo'] >= 0) {
+							} elseif ($vendite[$i]['quantita'] > $quantitaDaStornare and $vendite[$i]['importo'] >= 0) {
 								$vendite[$i]['importo'] = round($vendite[$i]['importo'] / $vendite[$i]['quantita'] * ($vendite[$i]['quantita'] - $quantitaDaStornare), 2);
 								$vendite[$i]['imponibile'] = round($vendite[$i]['imponibile'] / $vendite[$i]['quantita'] * ($vendite[$i]['quantita'] - $quantitaDaStornare), 2);
 								$vendite[$i]['imposta'] = $vendite[$i]['importo'] - $vendite[$i]['imponibile'];
@@ -526,7 +526,7 @@ while ($data <= $dataFine) {
 						getCounter($numRec),
 						'001',
 						$vendita['barcode'],
-						($transazione['importo'] < 0) ? 1 : ($vendita['importo'] > 0) ? 1 : -1,
+						($transazione['importo'] < 0) ? 1 : (($vendita['importo'] > 0) ? 1 : -1),
 						abs(round($vendita['importo'] * 100, 0)),
 						abs(round($vendita['imposta'] * 100, 0)),
 					);
@@ -606,33 +606,36 @@ while ($data <= $dataFine) {
 
 }
 
-function get_ean_checkdigit($ean12, $full = false){
+function get_ean_checkdigit($ean12, $full = false)
+{
 
-	$ean12 =(string)$ean12;
+	$ean12 = (string)$ean12;
 	// 1. Sommo le posizioni dispari
-	$even_sum = $ean12{1} + $ean12{3} + $ean12{5} + $ean12{7} + $ean12{9} + $ean12{11};
+	$even_sum = (int)$ean12[1] + (int)$ean12[3] + (int)$ean12[5] + (int)$ean12[7] + (int)$ean12[9] + (int)$ean12[11];
 	// 2. le moltiplico x 3
 	$even_sum_three = $even_sum * 3;
 	// 3. Sommo le posizioni pari
-	$odd_sum = $ean12{0} + $ean12{2} + $ean12{4} + $ean12{6} + $ean12{8} + $ean12{10};
+	$odd_sum = (int)$ean12[0] + (int)$ean12[2] + (int)$ean12[4] + (int)$ean12[6] + (int)$ean12[8] + (int)$ean12[10];
 	// 4. Sommo i parziali precedenti
 	$total_sum = $even_sum_three + $odd_sum;
 	// 5. Il check digit è il numero più piccolo sottomultiplo di 10
-	$next_ten = (ceil($total_sum/10))*10;
+	$next_ten = (ceil($total_sum / 10)) * 10;
 	$check_digit = $next_ten - $total_sum;
 
-	if($full==true) { // Ritorna tutto l'ean
-		return $ean12.$check_digit;
-	}
-	else { // Ritorna solo il check-digit
+	if ($full) { // Ritorna tutto l'ean
+		return $ean12 . $check_digit;
+	} else { // Ritorna solo il check-digit
 		return $check_digit;
 	}
 }
 
-function getCounter(int &$numRec): int {
+function getCounter(int &$numRec): int
+{
 	++$numRec;
 	if ($numRec > 999) {
 		$numRec = 1;
 	}
 	return $numRec;
-};
+}
+
+;
