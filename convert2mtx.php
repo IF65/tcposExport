@@ -250,19 +250,42 @@ while ($data <= $dataFine) {
 			}*/
 
 			foreach ($sales as $sale) {
-				$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
-					$sede,
-					$transaction['till_code'],
-					"$anno$mese$giorno",
-					$ora,
-					substr($transaction['trans_num'], -4),
-					++$numRec,
-					($transaction['total_amount'] < 0) ? 5 : 0,
-					$sale['department'],
-					$sale['article_barcode'],
-					$sale['qty_weight'],
-					round(abs($sale['prezzoListino'] * 100 / $sale['qty_weight']), 0)
-				);
+				if($transaction['trans_num'] == 10) {
+					echo "\n";
+				}
+				if(fmod($sale['qty_weight'], 1) !== 0.00) {
+					// decimal
+					$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+09.3f%+010d',
+						$sede,
+						$transaction['till_code'],
+						"$anno$mese$giorno",
+						$ora,
+						substr($transaction['trans_num'], -4),
+						++$numRec,
+						($transaction['total_amount'] < 0) ? 5 : 0,
+						$sale['department'],
+						$sale['article_barcode'],
+						$sale['qty_weight'],
+						round($sale['prezzoListino'] * 100, 0)
+					);
+				} else {
+					// integer
+					$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:S:1%01d1:%04s:%\' 16s%+05d0010*%09d',
+						$sede,
+						$transaction['till_code'],
+						"$anno$mese$giorno",
+						$ora,
+						substr($transaction['trans_num'], -4),
+						++$numRec,
+						($transaction['total_amount'] < 0) ? 5 : 0,
+						$sale['department'],
+						$sale['article_barcode'],
+						$sale['qty_weight'],
+						round(abs($sale['prezzoListino'] * 100 / $sale['qty_weight']), 0)
+					);
+				}
+
+
 
 				$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:i:100:%04s:%\' 16s:%011d3000000',
 					$sede,
