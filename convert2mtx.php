@@ -5,6 +5,7 @@ require 'vendor/autoload.php';
 use GuzzleHttp\Client;
 use GetOpt\GetOpt;
 use GetOpt\Option;
+use GuzzleHttp\Exception\GuzzleException;
 
 // costanti
 // -----------------------------------------------------------
@@ -14,28 +15,24 @@ $currentDate = (new DateTime('now', $timeZone));
 $yesterday = $currentDate->sub(new DateInterval('P1D'));
 
 $options = new GetOpt([
-	Option::create('i', 'inizio', GetOpt::REQUIRED_ARGUMENT )
-		->setDescription("Data inizio caricamento. (Default ".$yesterday->format('Y-m-d').").")
+	Option::create('i', 'inizio', GetOpt::REQUIRED_ARGUMENT)
+		->setDescription("Data inizio caricamento. (Default " . $yesterday->format('Y-m-d') . ").")
 		->setDefaultValue($yesterday->format('Y-m-d'))->setValidation(function ($value) {
 			return (preg_match('/^\d{4}\-\d{2}\-\d{2}$/', $value)) ? $value : '';
 		}),
-	Option::create('f', 'fine', GetOpt::OPTIONAL_ARGUMENT )
+	Option::create('f', 'fine', GetOpt::OPTIONAL_ARGUMENT)
 		->setDescription('Data fine caricamento. (Se mancante viene presa come data di fine la data d\'inizio).')->setValidation(function ($value) {
 			return (preg_match('/^\d{4}\-\d{2}\-\d{2}$/', $value)) ? $value : '';
 		}),
-	Option::create('s', 'sede', GetOpt::REQUIRED_ARGUMENT )
+	Option::create('s', 'sede', GetOpt::REQUIRED_ARGUMENT)
 		->setDescription('Sede da caricare.')->setValidation(function ($value) {
 			return (preg_match('/^\d{4}$/', $value)) ? $value : '';
 		}),
-	Option::create('d', 'debug', GetOpt::NO_ARGUMENT )
+	Option::create('d', 'debug', GetOpt::NO_ARGUMENT)
 		->setDescription('Imposta modalità debug.')
 ]);
 
-try {
-	$options->process();
-} catch (Missing $exception) {
-	throw $exception;
-}
+$options->process();
 
 $debug = false;
 if ($options->getOption('d') != null) {
@@ -62,13 +59,13 @@ $barcodeMenu = [
 	'9' => '9770110000092',
 	'10' => '9770110000108',
 	'11' => '9770110000115',
-	'12' => '9770110000122', //12-MERENDONA DI NATALE
-	'13' => '9770110000139', //13-CIOCCOLATA + PANETTONE
-	'14' => '9770110000146', //14-CIOCCOLATA + PANDORO
-	'15' => '9770110000153', //15-CIOCCOLATA + SACHER
-	'16' => '9770110000160', //16-CIOCCOLATA + TORTA MELE
-	'17' => '9770110000177', //17-MENU BIMBI NATALE NATURALE
-	'18' => '9770110000184', //18-MENU BIMBI NATALE FRIZZANTE
+	'12' => '9770110000122', //12-MENU SPECIALE 2020
+	'13' => '9770110000139', //13-MENU GOURMET 2020
+	'14' => '9770110000146', //14-MENU SECONDO DI CARNE 2020
+	'15' => '9770110000153', //15-MENU SECONDO DI PESCE 2020
+	'16' => '9770110000160', //16-MENU ARMONIA
+	'17' => '9770110000177', //17-MENU EQULIBRIO
+	'18' => '9770110000184', //18-MENU ARMONIA - 3
 	'19' => '9770110000191', //19-MENU EQUILIBRIO - 3
 	'20' => '9770110000207',
 ];
@@ -82,10 +79,11 @@ $transcodificaSede = [
 	'6005' => '0148',
 	'6006' => '0132',
 	'6007' => '0115',
+	'6008' => '0101',
 	'6009' => '0204'
 ];
 
-$menuValidi = ['1','2','3', '4', '5','6','7','8','9','10','11', '12', '13', '14', '15','16','17','18','19','20'];
+$menuValidi = ['3', '4', '5', '8', '11', '12', '13', '14', '15'];
 
 $client = new Client([
 	'base_uri' => 'http://10.11.14.128/',
@@ -166,6 +164,8 @@ while ($data <= $dataFine) {
 		$trans = array_column($dc, 'trans_num');
 		array_multisort($till, SORT_ASC, $trans, SORT_ASC, $dc);
 
+		$last_transaction_number = 0;
+		$last_till_code = 0;
 		$righe = [];
 		foreach ($dc as $transaction) {
 			$numRec = 0;
@@ -326,7 +326,7 @@ while ($data <= $dataFine) {
 							$ora,
 							substr($transaction['trans_num'], -4),
 							++$numRec,
-							($sale['menu_barcode'] == '') ? '9770110000054' : $sale['menu_barcode'],
+							$sale['menu_barcode'],
 							round($menu['price'] * -100, 0)
 						);
 					}
@@ -483,9 +483,9 @@ while ($data <= $dataFine) {
 				}
 				foreach ($sales as $index => $sale) {
 					$price = abs(round($sale['prezzoListino'] - $sale['sconto'], 2));
-					$sconto_transazionale = $price/$totaleDaVendite*$totaleScontiTransazionali;
-					$totaleScontiTransazionali -= round($sconto_transazionale,2);
-					$sales[$index]['scontoTransazionale'] = round($sconto_transazionale,2);
+					$sconto_transazionale = $price / $totaleDaVendite * $totaleScontiTransazionali;
+					$totaleScontiTransazionali -= round($sconto_transazionale, 2);
+					$sales[$index]['scontoTransazionale'] = round($sconto_transazionale, 2);
 				}
 				$sales[$maxIndex]['scontoTransazionale'] = $sales[$maxIndex]['scontoTransazionale'] + $totaleScontiTransazionali;
 			}
@@ -568,16 +568,38 @@ while ($data <= $dataFine) {
 				count($transaction['articles']),
 				round($transaction['total_amount'] * 100, 0)
 			);
+
+			$last_transaction_number = substr($transaction['trans_num'], -4) * 1;
+			$last_till_code = $transaction['till_code'];
 		}
+
+		$last_transaction_number += 1;
+		if ($last_transaction_number > 9999) {
+			$last_transaction_number = 1;
+		}
+		// scrivo record di chiusura
+		$righe[] = sprintf('%04s:%03s:%06s:%06s:%04s:%03s:F:9%01d0:%04s:%\' 16s:99%+06d%+010d',
+			$sede,
+			$last_till_code,
+			"$anno$mese$giorno",
+			$ora,
+			str_pad((string)$last_transaction_number, 4, "0", STR_PAD_LEFT),
+			1,
+			0,
+			803,
+			'',
+			0,
+			0
+		);
 
 		// esportazione su file di testo
 		$fileName = $sede . "_20$anno$mese$giorno" . '_' . "$anno$mese$giorno" . '_DC.TXT';
 
 		$path = '/Users/if65/Desktop/DC/';
-		if (! $debug) {
+		if (!$debug) {
 			$path = "/dati/datacollect/20$anno$mese$giorno/";
 		}
-		file_put_contents( $path . $fileName, implode("\r\n", $righe));
+		file_put_contents($path . $fileName, implode("\r\n", $righe));
 	}
 
 	$data->add(new DateInterval('P1D'));

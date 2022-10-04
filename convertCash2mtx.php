@@ -1,5 +1,5 @@
 <?php
-@ini_set('memory_limit','8192M');
+@ini_set('memory_limit', '8192M');
 
 require 'vendor/autoload.php';
 
@@ -13,20 +13,20 @@ $currentDate = new DateTime('now', $timeZone);
 $yesterday = $currentDate->sub(new DateInterval('P1D'));
 
 $options = new GetOpt([
-	Option::create('i', 'inizio', GetOpt::REQUIRED_ARGUMENT )
-		->setDescription("Data inizio caricamento. (Default ".$yesterday->format('Y-m-d').").")
+	Option::create('i', 'inizio', GetOpt::REQUIRED_ARGUMENT)
+		->setDescription("Data inizio caricamento. (Default " . $yesterday->format('Y-m-d') . ").")
 		->setDefaultValue($yesterday->format('Y-m-d'))->setValidation(function ($value) {
 			return (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) ? $value : '';
 		}),
-	Option::create('f', 'fine', GetOpt::OPTIONAL_ARGUMENT )
+	Option::create('f', 'fine', GetOpt::OPTIONAL_ARGUMENT)
 		->setDescription('Data fine caricamento. (Se mancante viene presa come data di fine la data d\'inizio).')->setValidation(function ($value) {
 			return (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) ? $value : '';
 		}),
-	Option::create('s', 'sede', GetOpt::REQUIRED_ARGUMENT )
+	Option::create('s', 'sede', GetOpt::REQUIRED_ARGUMENT)
 		->setDescription('Sede da caricare.')->setValidation(function ($value) {
 			return (preg_match('/^\d{4}$/', $value)) ? $value : '';
 		}),
-	Option::create('d', 'debug', GetOpt::NO_ARGUMENT )
+	Option::create('d', 'debug', GetOpt::NO_ARGUMENT)
 		->setDescription('Imposta modalità debug.')
 ]);
 
@@ -53,7 +53,7 @@ $sede = (string)$options->getOption('s');
 /**
  * costanti: ho aggiunto 0000 perché in alcuni casi esce in questo modo dai cash
  */
-$codiciIva = ['0000' => 7, '9931' => 0, 	'0400' => 1, '1000' => 2, '2200' => 3, '0500' => 4, '9100' => 5, '9300' => 6, '7400' => 7];
+$codiciIva = ['0000' => 7, '9931' => 0, '0400' => 1, '1000' => 2, '2200' => 3, '0500' => 4, '9100' => 5, '9300' => 6, '7400' => 7];
 $aliquoteIva = [0 => 0, 1 => 4, 2 => 10, 3 => 22, 4 => 5, 5 => 0, 6 => 0, 7 => 0];
 $ip = ['0012' => '192.168.239.20', '0016' => '192.168.216.10', '0018' => '192.168.218.10'];
 
@@ -333,7 +333,7 @@ if (preg_match('/^001[268]/', $sede)) {
 					}
 					return $order;
 				});
-				for ($i = 0; $i < count($transazione['vendite']); $i++ ) {
+				for ($i = 0; $i < count($transazione['vendite']); $i++) {
 					$transazione['vendite'][$i]['progressivoVendita'] = $i + 1;
 				}
 
@@ -362,7 +362,7 @@ if (preg_match('/^001[268]/', $sede)) {
 								7,
 								$vendita['reparto'],
 								$vendita['barcode'],
-								abs($vendita['quantita']) * -1 ,
+								abs($vendita['quantita']) * -1,
 								abs(round($vendita['importo'] / $vendita['quantita'] * 100, 0))
 							);
 						}
@@ -378,7 +378,9 @@ if (preg_match('/^001[268]/', $sede)) {
 								($transazione['tipo'] == 'A') ? 5 : 0,
 								$vendita['reparto'],
 								$vendita['barcode'],
-								($transazione['tipo'] == 'A') ? $vendita['peso'] * -1 : $vendita['peso'],
+								($transazione['tipo'] == 'A')
+									? str_replace(',', '.', sprintf('%+09.3f', $vendita['peso'] * -1))
+									: str_replace(',', '.', sprintf('%+09.3f', $vendita['peso'])),
 								($transazione['tipo'] == 'A') ? $importoUnitario * -1 : $importoUnitario
 							);
 						} else {
@@ -487,7 +489,7 @@ if (preg_match('/^001[268]/', $sede)) {
 					$barcodeDaStornare = $transazione['vendite'][$id]['barcode'];
 					$quantitaDaStornare = abs(round($transazione['vendite'][$id]['quantita'], 2));
 					if ($vendita['storno']) {
-						for ($i = $id - 1; $i >= 0; $i--) {
+						for ($i = ($id - 1); $i >= 0; $i--) {
 							if ($transazione['vendite'][$i]['barcode'] == $barcodeDaStornare && $quantitaDaStornare > 0) {
 								if (round($transazione['vendite'][$i]['quantita'], 2) == $quantitaDaStornare and $transazione['vendite'][$i]['importo'] >= 0) {
 									$transazione['vendite'][$i]['importo'] = 0;
@@ -670,24 +672,27 @@ function get_ean_checkdigit($ean12, $full = false): string
 	}
 }
 
-function getCounter(int &$numRec): int {
+function getCounter(int &$numRec): int
+{
 	++$numRec;
 	if ($numRec > 999) {
 		$numRec = 1;
 	}
 	return $numRec;
-};
+}
+
+;
 
 function cmpAliquoteIva($a, $b)
 {
-	$codiciIva = ['0000' => 7, '9931' => 0, 	'0400' => 1, '1000' => 2, '2200' => 3, '0500' => 4, '9100' => 5, '9300' => 6, '7400' => 7];
+	$codiciIva = ['0000' => 7, '9931' => 0, '0400' => 1, '1000' => 2, '2200' => 3, '0500' => 4, '9100' => 5, '9300' => 6, '7400' => 7];
 
 	$a = $codiciIva[$a];
 	$b = $codiciIva[$b];
 
 	if ($a > $b) {
 		return 1;
-	} else if  ($a < $b) {
+	} else if ($a < $b) {
 		return -1;
 	} else {
 		return 0;
